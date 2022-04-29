@@ -10,3 +10,4 @@ from maug.model.opus_mt import OpusMT
 from maug.model.polyjuice import NegPolyjuice
 from maug.model.roberta import RobertaMNLI
 from maug.model.stanza_ner import StanzaNER
+from maug.model.typing import MaskingPattern

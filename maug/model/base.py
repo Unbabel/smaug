@@ -2,7 +2,8 @@ import abc
 
 from typing import Any
 
-from maug.typing import MaskingPattern, Text
+from maug.typing import Text
+from maug.model.typing import MaskingPattern
 
 
 class Text2Text(abc.ABC):

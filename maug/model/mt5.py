@@ -7,7 +7,8 @@ from typing import List
 
 from maug import _itertools
 from maug.model import base
-from maug.typing import MaskingPattern, Text
+from maug.model.typing import MaskingPattern
+from maug.typing import Text
 
 
 _MASK_REGEX = re.compile("<extra_id_\d{1,2}>")
