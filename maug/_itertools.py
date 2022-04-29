@@ -2,6 +2,9 @@ import itertools
 import typing
 
 
+from collections import abc
+
+
 def take(iterable: typing.Iterable, n: int) -> typing.List:
     """Return first n items of the iterable as a list.
 
@@ -18,3 +21,13 @@ def repeat_items(iterable: typing.Iterable, n: int) -> typing.Iterable:
     """
     repeated_iterables = map(lambda x: itertools.repeat(x, n), iterable)
     return itertools.chain.from_iterable(repeated_iterables)
+
+
+class ResetableIterator(abc.Iterator):
+    """Specifies an iterator that can be reset.
+
+    When the iterator is reset, it should go back to the first element.
+    """
+
+    def reset():
+        ...
