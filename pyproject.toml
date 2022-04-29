@@ -6,6 +6,8 @@ authors = ["DuarteMRAlves <duartemalves@tecnico.ulisboa.pt>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
+numpy = "^1.21.4"
+transformers = "^4.15.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7"
