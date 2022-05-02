@@ -8,6 +8,8 @@ The `maug` package can be used as a command line interface (CLI) or by directly 
 
 ## Command Line Interface
 
+The CLI offers a way to read, transform, validate and write perturbed sentences to files. For more information, see the [full details](CLI.md).
+
 ### Single transform
 
 To apply a single transform to a set of sentences, execute the following command:
@@ -16,7 +18,7 @@ To apply a single transform to a set of sentences, execute the following command
 $ augment read-lines -p <input_file> -l <input_lang_code> <transf_name> write-json -p <output_file>
 ```
 
-> `<transf_name>` is the name of the transform to apply.
+> `<transf_name>` is the name of the transform to apply (see this [section](OPERATIONS.md#transforms) for a list of available transforms).
 >
 > `<input_file>` is a text file with one sentence per line.
 >
