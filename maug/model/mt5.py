@@ -11,7 +11,7 @@ from maug.model.typing import MaskingPattern
 from maug.typing import Text
 
 
-_MASK_REGEX = re.compile("<extra_id_\d{1,2}>")
+_MASK_REGEX = re.compile(r"<extra_id_\d{1,2}>")
 
 
 class _MT5MaskFunction(_itertools.ResetableIterator):
