@@ -28,7 +28,7 @@ def read_lines(prev, path: str, lang: str, sample: typing.Union[int, None]):
         sentences = [l[:-1] for l in fp.readlines()]
 
     sentences = fmt.pbar_from_iterable(sentences, f"Read Sentences from {path}")
-    records = [{"original": s} for s in sentences]
+    records = [{"original": s, "perturbations": {}} for s in sentences]
 
     if sample is not None and len(records) > sample:
         rng = random.numpy_seeded_rng()
@@ -61,7 +61,8 @@ def read_csv(prev, path, sample: typing.Union[int, None]):
     def df_to_dataset(df: pd.DataFrame, lp: str) -> typing.Dict:
         lp_data = df[df["lp"] == lp]
         records = [
-            {"original": row["ref"], **row.to_dict()} for _, row in lp_data.iterrows()
+            {"original": row["ref"], "perturbations": {}, **row.to_dict()}
+            for _, row in lp_data.iterrows()
         ]
         _, target_lang = lp.split("-")
         return {
