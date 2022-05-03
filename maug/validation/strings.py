@@ -1,6 +1,6 @@
 import re
-import typing
 
+from typing import Dict, List, Optional
 
 from maug.validation import base
 
@@ -21,16 +21,24 @@ class MinRelativeLength(base.CmpBased):
 
     Args:
         threshold: minimum ratio len(critical) / len(original) that should be accepted.
+        original_field: Field in the original records to transform.
+        perturbations_field: Field with the perturbations added by the transforms.
+            This field is a dictionary with the transform name as keys and the
+            perturbed sentences as values.
+        critical_field: Field inside the perturbations dictionary with the perturbation
+            to test.
     """
 
     def __init__(
         self,
         threshold: float,
-        original_field: typing.Optional[str] = None,
-        critical_field: typing.Optional[str] = None,
+        original_field: Optional[str] = None,
+        perturbations_field: Optional[str] = None,
+        critical_field: Optional[str] = None,
     ):
         super().__init__(
             original_field=original_field,
+            perturbations_field=perturbations_field,
             critical_field=critical_field,
         )
         self.__threshold = threshold
@@ -51,20 +59,24 @@ class NoRegexMatch(base.Validation):
     def __init__(
         self,
         pattern: str,
-        original_field: typing.Optional[str] = None,
-        critical_field: typing.Optional[str] = None,
+        original_field: Optional[str] = None,
+        perturbations_field: Optional[str] = None,
+        critical_field: Optional[str] = None,
     ):
         super().__init__(
             original_field=original_field,
+            perturbations_field=perturbations_field,
             critical_field=critical_field,
         )
         self.__pattern = re.compile(pattern)
 
-    def __call__(self, records: typing.List[typing.Dict]) -> typing.List[typing.Dict]:
+    def __call__(self, records: List[Dict]) -> List[Dict]:
         for r in records:
-            if (
-                self.critical_field in r
-                and self.__pattern.search(r[self.critical_field]) is not None
-            ):
-                del r[self.critical_field]
+            if self.perturbations_field not in r:
+                continue
+            perturbations = r[self.perturbations_field]
+            if self.critical_field not in perturbations:
+                continue
+            if self.__pattern.search(perturbations[self.critical_field]) is not None:
+                del perturbations[self.critical_field]
         return records
