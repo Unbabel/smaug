@@ -57,6 +57,7 @@ augment.add_command(transform.transform_swap_ne)
 augment.add_command(transform.transform_swap_num)
 
 augment.add_command(validation.validation_keep_contradiction)
+augment.add_command(validation.validation_keep_equal_named_entity_count)
 augment.add_command(validation.validation_keep_equal_numbers_count)
 augment.add_command(validation.validation_remove_equal)
 augment.add_command(validation.validation_remove_pattern)

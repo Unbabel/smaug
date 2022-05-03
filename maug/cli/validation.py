@@ -148,7 +148,7 @@ def validation_keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_
 
 @click.command(
     "val-keep-eq-num",
-    help="Keep synthetic records with the same numbers count as the original.",
+    help="Keep perturbations with the same numbers count as the original.",
 )
 @click.option(
     "--transform",
@@ -183,4 +183,68 @@ def validation_keep_equal_numbers_count(ctx, datasets, cli_transforms):
             not_validated = dataset["records"]
             dataset["records"] = val(not_validated)
             pbar.update(len(not_validated))
+    return processed
+
+
+@click.command(
+    "val-keep-eq-ne",
+    help="Keep perturbations with the same named entities count as the original.",
+)
+@click.option(
+    "--transform",
+    "cli_transforms",
+    multiple=True,
+    help="Transforms to filter with this validation. If not specified all are validated.",
+)
+@click.option(
+    "--batch-size",
+    default=16,
+    show_default=True,
+    help="Batch size when processing records.",
+)
+@click.option("--no-gpu", is_flag=True, help="Disable gpu.")
+@processor.make
+@click.pass_context
+def validation_keep_equal_named_entity_count(
+    ctx, datasets, cli_transforms, batch_size, no_gpu
+):
+    """Validates if the synthetic records have an equal named entity count as the original records.
+
+    This operation is a validation. It uses a Stanza NER model to detect the named entities
+    both in the original and the perturbed sentences.
+    """
+    transforms = cli_transforms if cli_transforms else list(ctx.obj.iter_transforms())
+
+    total_records = sum(
+        len(dataset["records"])
+        for dataset in datasets
+        if model.StanzaNER.is_lang_available(dataset["lang"])
+    )
+    if total_records == 0:
+        click.echo(fmt.no_records_message("Keep Equal Named Entities Count"))
+        return datasets
+
+    gpu = accelerator.use_gpu(no_gpu)
+
+    processed = [dataset for dataset in datasets]
+    for transform in transforms:
+        pbar = fmt.pbar_from_total(
+            total_records, f"Keep Equal Named Entities Count for {transform}"
+        )
+        for dataset in processed:
+            lang = dataset["lang"]
+            if not model.StanzaNER.is_lang_available(lang):
+                continue
+            val = validation.EqualNamedEntityCount(
+                ner_model=model.StanzaNER(lang=lang, use_gpu=gpu),
+                original_field="original",
+                critical_field=transform,
+            )
+            not_validated = dataset["records"]
+            validated = []
+            for i in range(0, len(not_validated), batch_size):
+                batch = not_validated[i : i + batch_size]
+                validated.extend(val(batch))
+                pbar.update(len(batch))
+            dataset["records"] = validated
     return processed

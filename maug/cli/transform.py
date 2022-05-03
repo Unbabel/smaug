@@ -105,6 +105,9 @@ _SWAP_NE_CMD = "transf-swp-ne"
     pattern="<extra_id_\d{1,2}>",
     cli_transforms=[_SWAP_NE_CMD],
 )
+@processor.post_run(
+    validation.validation_keep_equal_named_entity_count, cli_transforms=[_SWAP_NE_CMD]
+)
 @click.pass_context
 def transform_swap_ne(ctx, datasets, batch_size, no_gpu):
     """Swaps a single named entity for text using named entity recognition and mT5.
@@ -140,6 +143,7 @@ def transform_swap_ne(ctx, datasets, batch_size, no_gpu):
     for dataset in datasets:
         lang = dataset["lang"]
         if not model.StanzaNER.is_lang_available(lang):
+            processed.append(dataset)
             continue
         m = mask.NamedEntity(
             lang=lang,
