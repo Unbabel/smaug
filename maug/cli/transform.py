@@ -29,6 +29,9 @@ _SWAP_NUM_ID = "transf-swap-number"
     pattern="<extra_id_\d{1,2}>",
     cli_transforms=[_SWAP_NUM_ID],
 )
+@processor.post_run(
+    validation.validation_keep_equal_numbers_count, cli_transforms=[_SWAP_NUM_ID]
+)
 @click.pass_context
 def transform_swap_num(ctx, datasets, batch_size, no_gpu):
     """Swaps a number for text using regex and mT5.

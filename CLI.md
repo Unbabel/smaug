@@ -18,11 +18,12 @@ Utilities offer functions to perform common operations, such as reading and writ
 
 ### Validations
 
-| Name                   | CLI Command            | Description |
-| ---------------------- | ---------------------- | ----------- |
-| Keep Contradiction     | val-keep-contradiction | Verifies if the perturbed sentence contradicts the original sentence. Relies on an [RoBERTa](https://arxiv.org/abs/1907.11692) model trained for mnli. |
-| Remove Equal Sentences | val-rm-equal           | Verifies if the perturbed sentence is different from the original sentence with string comparison. Useful if the transform is unable to produce a perturbation and returns the original sentence.
-| Remove a Pattern       | val-rm-pattern         | Verifies if the perturbed sentence does not have a specific regular expression. Usefull with language models that may leave special tokens behind. |
+| Name                     | CLI Command            | Description |
+| ------------------------ | ---------------------- | ----------- |
+| Keep Contradiction       | val-keep-contradiction | Verifies if the perturbed sentence contradicts the original sentence. Relies on a [RoBERTa](https://arxiv.org/abs/1907.11692) model trained for mnli. |
+| Keep Equal Numbers Count | val-keep-eq-num        | Verifies if the perturbed and original sentences have the same number of numbers using RegEx to detect the numbers. |
+| Remove Equal Sentences   | val-rm-equal           | Verifies if the perturbed sentence is different from the original sentence with string comparison. Useful if the transform is unable to produce a perturbation and returns the original sentence.
+| Remove a Pattern         | val-rm-pattern         | Verifies if the perturbed sentence does not have a specific regular expression. Usefull with language models that may leave special tokens behind. |
 
 ### Utilities
 

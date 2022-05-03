@@ -144,3 +144,43 @@ def validation_keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_
                 pbar.update(len(batch))
             dataset["records"] = validated
     return processed
+
+
+@click.command(
+    "val-keep-eq-num",
+    help="Keep synthetic records with the same numbers count as the original.",
+)
+@click.option(
+    "--transform",
+    "cli_transforms",
+    multiple=True,
+    help="Transforms to filter with this validation. If not specified all are validated.",
+)
+@processor.make
+@click.pass_context
+def validation_keep_equal_numbers_count(ctx, datasets, cli_transforms):
+    """Validates if the synthetic records have an equal number count as the original records.
+
+    This operation is a validation. It uses Regular Expressions to detect the numbers
+    both in the original and the perturbed sentences.
+    """
+    transforms = cli_transforms if cli_transforms else list(ctx.obj.iter_transforms())
+
+    total_records = sum(len(orig["records"]) for orig in datasets)
+    if total_records == 0:
+        click.echo(fmt.no_records_message("Keep Equal Numbers Count"))
+        return datasets
+
+    processed = [dataset for dataset in datasets]
+    for transform in transforms:
+        pbar = fmt.pbar_from_total(
+            total_records, f"Keep Equal Numbers Count for {transform}"
+        )
+        val = validation.EqualNumbersCount(
+            original_field="original", critical_field=transform
+        )
+        for dataset in processed:
+            not_validated = dataset["records"]
+            dataset["records"] = val(not_validated)
+            pbar.update(len(not_validated))
+    return processed
