@@ -1,10 +1,10 @@
 import tqdm
 
 PBAR_FORMAT = (
-    "{desc}: |{bar:-50}| {percentage:3.0f}% [ellapsed={elapsed}, remaining={remaining}]"
+    "{desc}: |{bar:-20}| {percentage:3.0f}% [ellapsed={elapsed}, remaining={remaining}]"
 )
 
-DEFAULT_MAX_DESC_LEN = 40
+DEFAULT_MAX_DESC_LEN = 50
 
 
 def pbar_from_total(total: int, desc: str):

@@ -84,9 +84,6 @@ class NegPolyjuice:
                 no_repeat_ngram_size=2,
             )
 
-        if len(prompts) == 1:
-            generation_out = [generation_out]
-
         # We have a result for each prompt, but not for each original
         # sentence.
         results = (self.__extract_results(g)[0] for g in generation_out)

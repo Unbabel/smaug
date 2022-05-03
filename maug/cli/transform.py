@@ -9,6 +9,9 @@ from maug.cli import processor
 from maug.cli import validation
 
 
+_SWAP_NUM_ID = "transf-swap-number"
+
+
 @click.command(
     "transf-swp-num", short_help="Swap a number for text with regex and mT5."
 )
@@ -20,8 +23,12 @@ from maug.cli import validation
 )
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
-@processor.post_run(validation.validation_remove_equal)
-@processor.post_run(validation.validation_remove_pattern, pattern="<extra_id_\d{1,2}>")
+@processor.post_run(validation.validation_remove_equal, cli_transforms=[_SWAP_NUM_ID])
+@processor.post_run(
+    validation.validation_remove_pattern,
+    pattern="<extra_id_\d{1,2}>",
+    cli_transforms=[_SWAP_NUM_ID],
+)
 @click.pass_context
 def transform_swap_num(ctx, datasets, batch_size, no_gpu):
     """Swaps a number for text using regex and mT5.
@@ -41,9 +48,7 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
         click.echo(fmt.no_records_message("Swap Number"))
         return datasets
 
-    transf_id = "transf-swap-number"
-
-    ctx.obj.register_transform(transf_id)
+    ctx.obj.register_transform(_SWAP_NUM_ID)
 
     gpu = accelerator.use_gpu(no_gpu)
 
@@ -54,7 +59,7 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
         fill=mT5,
         num_samples=1,
         original_field="original",
-        critical_field=transf_id,
+        critical_field=_SWAP_NUM_ID,
     )
 
     processed = []
@@ -76,6 +81,9 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
     return processed
 
 
+_NEGATE_TRANSF_ID = "transf-negation"
+
+
 @click.command("transf-neg", short_help="Negate the sentence with polyjuice.")
 @click.option(
     "--batch-size",
@@ -85,9 +93,17 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
 )
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
-@processor.post_run(validation.validation_remove_equal)
-@processor.post_run(validation.validation_remove_pattern, pattern="EMPTY")
-@processor.post_run(validation.validation_keep_contradiction)
+@processor.post_run(
+    validation.validation_remove_equal, cli_transforms=[_NEGATE_TRANSF_ID]
+)
+@processor.post_run(
+    validation.validation_remove_pattern,
+    pattern="EMPTY",
+    cli_transforms=[_NEGATE_TRANSF_ID],
+)
+@processor.post_run(
+    validation.validation_keep_contradiction, cli_transforms=[_NEGATE_TRANSF_ID]
+)
 @click.pass_context
 def transform_negate(ctx, datasets, batch_size, no_gpu):
     """Negates the received sentences with polyjuice.
@@ -103,15 +119,15 @@ def transform_negate(ctx, datasets, batch_size, no_gpu):
         click.echo(fmt.no_records_message("Negation"))
         return datasets
 
-    transf_id = "transf-negation"
-
-    ctx.obj.register_transform(transf_id)
+    ctx.obj.register_transform(_NEGATE_TRANSF_ID)
 
     gpu = accelerator.use_gpu(no_gpu)
 
     neg_polyjuice = model.NegPolyjuice(cuda=gpu)
     transf = transform.Negation(
-        neg_polyjuice=neg_polyjuice, original_field="original", critical_field=transf_id
+        neg_polyjuice=neg_polyjuice,
+        original_field="original",
+        critical_field=_NEGATE_TRANSF_ID,
     )
 
     pbar = fmt.pbar_from_total(total_records, "Negation")
