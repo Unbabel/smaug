@@ -10,10 +10,11 @@ Utilities offer functions to perform common operations, such as reading and writ
 
 ### Transforms
 
-| Name        | CLI Command    | Description |
-| ----------- | -------------- | ----------- |
-| Negate      | transf-neg     | Negates an english sentence using [PolyJuice](https://arxiv.org/abs/2101.00288) conditioned for negation.
-| Swap Number | transf-swp-num | Detects a single number with RegEx and swaps it for text generated with [Google's mT5](https://arxiv.org/abs/2010.11934). |
+| Name              | CLI Command    | Description |
+| ----------------- | -------------- | ----------- |
+| Negate            | transf-neg     | Negates an english sentence using [PolyJuice](https://arxiv.org/abs/2101.00288) conditioned for negation.
+| Swap Named Entity | transf-swp-ne  | Detects a single named entity with a [Stanza model](https://stanfordnlp.github.io/stanza/available_models.html#available-ner-models) and swaps it for text generated with [Google's mT5](https://arxiv.org/abs/2010.11934). |
+| Swap Number       | transf-swp-num | Detects a single number with RegEx and swaps it for text generated with [Google's mT5](https://arxiv.org/abs/2010.11934). |
 
 ### Validations
 

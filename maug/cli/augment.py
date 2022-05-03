@@ -52,8 +52,9 @@ def process_commands(ctx, processors, no_post_run: bool, seed: typing.Union[int,
 augment.add_command(read.read_csv)
 augment.add_command(read.read_lines)
 
-augment.add_command(transform.transform_swap_num)
 augment.add_command(transform.transform_negate)
+augment.add_command(transform.transform_swap_ne)
+augment.add_command(transform.transform_swap_num)
 
 augment.add_command(validation.validation_remove_equal)
 augment.add_command(validation.validation_remove_pattern)

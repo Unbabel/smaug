@@ -105,6 +105,10 @@ class StanzaNER(base.TokenClassification):
         return [self.__nlp(t) for t in text]
 
     @staticmethod
+    def is_lang_available(lang: str):
+        return lang in StanzaNER.__MODEL_TAGS
+
+    @staticmethod
     @functools.lru_cache(maxsize=1)
     def __load_pipeline(lang, use_gpu):
         """Loads a new pipeline for a given language.
