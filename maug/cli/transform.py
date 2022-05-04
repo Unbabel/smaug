@@ -9,12 +9,11 @@ from maug.cli import processor
 from maug.cli import validation
 
 
+_SWAP_NUM_CMD = "transf-swp-num"
 _SWAP_NUM_ID = "transf-swap-number"
 
 
-@click.command(
-    "transf-swp-num", short_help="Swap a number for text with regex and mT5."
-)
+@click.command(_SWAP_NUM_CMD, short_help="Swap a number for text with regex and mT5.")
 @click.option(
     "--batch-size",
     default=16,
@@ -48,7 +47,7 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
     """
     total_records = sum(len(datasets["records"]) for datasets in datasets)
     if total_records == 0:
-        click.echo(fmt.no_records_message("Swap Number"))
+        click.echo(fmt.no_records_message("Swap a Number for Text"))
         return datasets
 
     ctx.obj.register_transform(_SWAP_NUM_ID)
@@ -67,7 +66,7 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
 
     processed = []
 
-    pbar = fmt.pbar_from_total(total_records, "Swap Number")
+    pbar = fmt.pbar_from_total(total_records, "Swap a Number for Text")
     for dataset in datasets:
         old_records = dataset["records"]
         new_records = []
@@ -128,7 +127,7 @@ def transform_swap_ne(ctx, datasets, batch_size, no_gpu):
         if model.StanzaNER.is_lang_available(dataset["lang"])
     )
     if total_records == 0:
-        click.echo(fmt.no_records_message("Swap Named Entity"))
+        click.echo(fmt.no_records_message("Swap a Named Entitiy for Text"))
         return datasets
 
     ctx.obj.register_transform(_SWAP_NE_CMD)
@@ -139,7 +138,7 @@ def transform_swap_ne(ctx, datasets, batch_size, no_gpu):
 
     processed = []
 
-    pbar = fmt.pbar_from_total(total_records, "Swap Named Entity")
+    pbar = fmt.pbar_from_total(total_records, "Swap a Named Entitiy for Text")
     for dataset in datasets:
         lang = dataset["lang"]
         if not model.StanzaNER.is_lang_available(lang):
@@ -175,9 +174,10 @@ def transform_swap_ne(ctx, datasets, batch_size, no_gpu):
 
 
 _NEGATE_TRANSF_ID = "transf-negation"
+_NEG_CMD = "transf-neg"
 
 
-@click.command("transf-neg", short_help="Negate the sentence with polyjuice.")
+@click.command(_NEG_CMD, short_help="Negate the sentence with polyjuice.")
 @click.option(
     "--batch-size",
     default=16,
@@ -209,7 +209,7 @@ def transform_negate(ctx, datasets, batch_size, no_gpu):
         len(orig["records"]) for orig in datasets if orig["lang"] == "en"
     )
     if total_records == 0:
-        click.echo(fmt.no_records_message("Negation"))
+        click.echo(fmt.no_records_message("Negate the Sentence"))
         return datasets
 
     ctx.obj.register_transform(_NEGATE_TRANSF_ID)
@@ -223,7 +223,7 @@ def transform_negate(ctx, datasets, batch_size, no_gpu):
         critical_field=_NEGATE_TRANSF_ID,
     )
 
-    pbar = fmt.pbar_from_total(total_records, "Negation")
+    pbar = fmt.pbar_from_total(total_records, "Negate the Sentence")
 
     processed = []
     for orig in datasets:
