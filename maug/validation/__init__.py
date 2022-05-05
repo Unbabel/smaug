@@ -11,4 +11,9 @@ from maug.validation.nli import IsContradiction
 
 from maug.validation.numerical import EqualNumbersCount
 
-from maug.validation.strings import MinRelativeLength, NotEqual, NoRegexMatch
+from maug.validation.strings import (
+    MinEditDistance,
+    MinRelativeLength,
+    NotEqual,
+    NoRegexMatch,
+)
