@@ -12,7 +12,7 @@ from maug.validation.nli import IsContradiction
 from maug.validation.numerical import EqualNumbersCount
 
 from maug.validation.strings import (
-    MinEditDistance,
+    GeqEditDistance,
     MinRelativeLength,
     NotEqual,
     NoRegexMatch,

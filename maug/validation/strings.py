@@ -83,7 +83,7 @@ class NoRegexMatch(base.Validation):
         return records
 
 
-class MinEditDistance(base.CmpBased):
+class GeqEditDistance(base.CmpBased):
     """Filters critical records with a small edit distance to the original one.
 
     Args:

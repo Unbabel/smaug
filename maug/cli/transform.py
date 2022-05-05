@@ -23,15 +23,11 @@ _NEG_CMD = "transf-neg"
 )
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
-@processor.post_run(validation.validation_remove_equal, cli_transforms=[_SWAP_NUM_CMD])
+@processor.post_run(validation.rm_eq, cli_transforms=[_SWAP_NUM_CMD])
 @processor.post_run(
-    validation.validation_remove_pattern,
-    pattern="<extra_id_\d{1,2}>",
-    cli_transforms=[_SWAP_NUM_CMD],
+    validation.rm_pattern, pattern="<extra_id_\d{1,2}>", cli_transforms=[_SWAP_NUM_CMD]
 )
-@processor.post_run(
-    validation.validation_keep_equal_numbers_count, cli_transforms=[_SWAP_NUM_CMD]
-)
+@processor.post_run(validation.keep_eq_num_count, cli_transforms=[_SWAP_NUM_CMD])
 @click.pass_context
 def swap_num(ctx, datasets, batch_size, no_gpu):
     """Swaps a number for text using regex and mT5.
@@ -96,15 +92,11 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 )
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
-@processor.post_run(validation.validation_remove_equal, cli_transforms=[_SWAP_NE_CMD])
+@processor.post_run(validation.rm_eq, cli_transforms=[_SWAP_NE_CMD])
 @processor.post_run(
-    validation.validation_remove_pattern,
-    pattern="<extra_id_\d{1,2}>",
-    cli_transforms=[_SWAP_NE_CMD],
+    validation.rm_pattern, pattern="<extra_id_\d{1,2}>", cli_transforms=[_SWAP_NE_CMD]
 )
-@processor.post_run(
-    validation.validation_keep_equal_named_entity_count, cli_transforms=[_SWAP_NE_CMD]
-)
+@processor.post_run(validation.keep_eq_ne_count, cli_transforms=[_SWAP_NE_CMD])
 @click.pass_context
 def swap_ne(ctx, datasets, batch_size, no_gpu):
     """Swaps a single named entity for text using named entity recognition and mT5.
@@ -180,13 +172,9 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
 )
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
-@processor.post_run(validation.validation_remove_equal, cli_transforms=[_NEG_CMD])
-@processor.post_run(
-    validation.validation_remove_pattern,
-    pattern="EMPTY",
-    cli_transforms=[_NEG_CMD],
-)
-@processor.post_run(validation.validation_keep_contradiction, cli_transforms=[_NEG_CMD])
+@processor.post_run(validation.rm_eq, cli_transforms=[_NEG_CMD])
+@processor.post_run(validation.rm_pattern, pattern="EMPTY", cli_transforms=[_NEG_CMD])
+@processor.post_run(validation.keep_contradiction, cli_transforms=[_NEG_CMD])
 @click.pass_context
 def negate(ctx, datasets, batch_size, no_gpu):
     """Negates the received sentences with polyjuice.

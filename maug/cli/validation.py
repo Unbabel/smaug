@@ -7,9 +7,15 @@ from maug.cli import fmt
 from maug.cli import processor
 
 
-@click.command(
-    "val-rm-equal", short_help="Remove sythetic records equal to the original."
-)
+_RM_EQ_CMD = "val-rm-eq"
+_RM_PATTERN_CMD = "val-rm-pattern"
+_KEEP_CONTRADICTION_CMD = "val-keep-contradiction"
+_KEEP_EQ_NUM_CMD = "val-keep-eq-num"
+_KEEP_EQ_NE_CMD = "val-keep-eq-ne"
+_KEEP_GEQ_EDIT_DIST_CMD = "val-keep-geq-edit-dist"
+
+
+@click.command(_RM_EQ_CMD, short_help="Remove sythetic records equal to the original.")
 @click.option(
     "--transform",
     "cli_transforms",
@@ -18,7 +24,7 @@ from maug.cli import processor
 )
 @processor.make
 @click.pass_context
-def validation_remove_equal(ctx, datasets, cli_transforms):
+def rm_eq(ctx, datasets, cli_transforms):
     """Validates if the generated records are not equal to the original.
 
     This operations is a validation. It ensures the generated record is different
@@ -46,7 +52,7 @@ def validation_remove_equal(ctx, datasets, cli_transforms):
 
 
 @click.command(
-    "val-rm-pattern", short_help="Remove synthetic records that match a pattern."
+    _RM_PATTERN_CMD, short_help="Remove synthetic records that match a pattern."
 )
 @click.option("-p", "--pattern", required=True, help="Pattern to search.")
 @click.option(
@@ -57,7 +63,7 @@ def validation_remove_equal(ctx, datasets, cli_transforms):
 )
 @processor.make
 @click.pass_context
-def validation_remove_pattern(ctx, datasets, pattern, cli_transforms):
+def rm_pattern(ctx, datasets, pattern, cli_transforms):
     """Validates if the generated records do not match a regular expression.
 
     This operations is a validation. It ensures generated records do not have
@@ -92,7 +98,7 @@ def validation_remove_pattern(ctx, datasets, pattern, cli_transforms):
 
 
 @click.command(
-    "val-keep-contradiction",
+    _KEEP_CONTRADICTION_CMD,
     help="Keep synthetic records contradicting the original.",
 )
 @click.option(
@@ -110,7 +116,7 @@ def validation_remove_pattern(ctx, datasets, pattern, cli_transforms):
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
 @click.pass_context
-def validation_keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
+def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
     """Validates if the synthetic records contradict the original records.
 
     This operation is a validation. It uses a RoBERTa model trained for NLI
@@ -147,7 +153,7 @@ def validation_keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_
 
 
 @click.command(
-    "val-keep-eq-num",
+    _KEEP_EQ_NUM_CMD,
     help="Keep perturbations with the same numbers count as the original.",
 )
 @click.option(
@@ -158,7 +164,7 @@ def validation_keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_
 )
 @processor.make
 @click.pass_context
-def validation_keep_equal_numbers_count(ctx, datasets, cli_transforms):
+def keep_eq_num_count(ctx, datasets, cli_transforms):
     """Validates if the synthetic records have an equal number count as the original records.
 
     This operation is a validation. It uses Regular Expressions to detect the numbers
@@ -187,7 +193,7 @@ def validation_keep_equal_numbers_count(ctx, datasets, cli_transforms):
 
 
 @click.command(
-    "val-keep-eq-ne",
+    _KEEP_EQ_NE_CMD,
     help="Keep perturbations with the same named entities count as the original.",
 )
 @click.option(
@@ -205,9 +211,7 @@ def validation_keep_equal_numbers_count(ctx, datasets, cli_transforms):
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
 @click.pass_context
-def validation_keep_equal_named_entity_count(
-    ctx, datasets, cli_transforms, batch_size, no_gpu
-):
+def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
     """Validates if the synthetic records have an equal named entity count as the original records.
 
     This operation is a validation. It uses a Stanza NER model to detect the named entities
@@ -247,4 +251,47 @@ def validation_keep_equal_named_entity_count(
                 validated.extend(val(batch))
                 pbar.update(len(batch))
             dataset["records"] = validated
+    return processed
+
+
+@click.command(
+    _KEEP_GEQ_EDIT_DIST_CMD,
+    help="Keep perturbations with a minimum edit distance from the original above a threshold.",
+)
+@click.option(
+    "-d", "--distance", type=int, required=True, help="Minimum threshold to accept."
+)
+@click.option(
+    "--transform",
+    "cli_transforms",
+    multiple=True,
+    help="Transforms to filter with this validation. If not specified all are validated.",
+)
+@processor.make
+@click.pass_context
+def keep_geq_edit_dist(ctx, datasets, distance, cli_transforms):
+    """Validates if the pertubrations have a minimum edit distance higher than a threshold.
+
+    This operation is a validation. It computes the minimum edit distance between the original
+    and perturbed sentences.
+    """
+    transforms = cli_transforms if cli_transforms else list(ctx.obj.iter_transforms())
+
+    total_records = sum(len(orig["records"]) for orig in datasets)
+    if total_records == 0:
+        click.echo(fmt.no_records_message(f"Keep Edit Distance above {distance}"))
+        return datasets
+
+    processed = [dataset for dataset in datasets]
+    for transform in transforms:
+        pbar = fmt.pbar_from_total(
+            total_records, f"Keep Edit Distance above {distance} for {transform}"
+        )
+        val = validation.GeqEditDistance(
+            min_dist=distance, original_field="original", critical_field=transform
+        )
+        for dataset in processed:
+            not_validated = dataset["records"]
+            dataset["records"] = val(not_validated)
+            pbar.update(len(not_validated))
     return processed

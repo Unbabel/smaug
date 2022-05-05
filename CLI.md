@@ -34,7 +34,7 @@ The following table details the available CLI commands:
         <td>Detects a single number with RegEx and swaps it for text generated with <a href="https://arxiv.org/abs/2010.11934">Google's mT5</a>.</td>
 	</tr>
 	<tr>
-	    <td rowspan="5">Validation</td>
+	    <td rowspan="6">Validation</td>
 	    <td>Keep Contradiction</td>
         <td nowrap="nowrap"><code>val-keep-contradiction</code></td>
         <td>Verifies if the perturbed sentence contradicts the original sentence. Relies on a <a href="https://arxiv.org/abs/1907.11692">RoBERTa</a> model trained for mnli.</td>
@@ -48,6 +48,11 @@ The following table details the available CLI commands:
 	    <td>Keep Equal Named Entities Count</td>
 	    <td nowrap="nowrap"><code>val-keep-eq-ne</code></td>
 	    <td>Verifies if the perturbed and original sentences have the same number of named entities using a <a href="https://stanfordnlp.github.io/stanza/available_models.html#available-ner-models">Stanza model</a> to detect them.</td>
+	</tr>
+	<tr>
+	    <td>Keep Greater or Equal Edit Distance</td>
+	    <td nowrap="nowrap"><code>val-keep-geq-edit-dist</code></td>
+	    <td>Verifies if the perturbed and original sentences an <a href="https://web.stanford.edu/class/cs124/lec/med.pdf">minimum edit distance</a> above a threshold.</td>
 	</tr>
 	<tr>
 	    <td>Remove Equal Sentences</td>
