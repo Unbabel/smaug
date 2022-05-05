@@ -10,7 +10,8 @@ from maug.cli import validation
 
 
 _SWAP_NUM_CMD = "transf-swp-num"
-_SWAP_NUM_ID = "transf-swap-number"
+_SWAP_NE_CMD = "transf-swp-ne"
+_NEG_CMD = "transf-neg"
 
 
 @click.command(_SWAP_NUM_CMD, short_help="Swap a number for text with regex and mT5.")
@@ -22,17 +23,17 @@ _SWAP_NUM_ID = "transf-swap-number"
 )
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
-@processor.post_run(validation.validation_remove_equal, cli_transforms=[_SWAP_NUM_ID])
+@processor.post_run(validation.validation_remove_equal, cli_transforms=[_SWAP_NUM_CMD])
 @processor.post_run(
     validation.validation_remove_pattern,
     pattern="<extra_id_\d{1,2}>",
-    cli_transforms=[_SWAP_NUM_ID],
+    cli_transforms=[_SWAP_NUM_CMD],
 )
 @processor.post_run(
-    validation.validation_keep_equal_numbers_count, cli_transforms=[_SWAP_NUM_ID]
+    validation.validation_keep_equal_numbers_count, cli_transforms=[_SWAP_NUM_CMD]
 )
 @click.pass_context
-def transform_swap_num(ctx, datasets, batch_size, no_gpu):
+def swap_num(ctx, datasets, batch_size, no_gpu):
     """Swaps a number for text using regex and mT5.
 
     This operation is a transformation.
@@ -50,7 +51,7 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
         click.echo(fmt.no_records_message("Swap a Number for Text"))
         return datasets
 
-    ctx.obj.register_transform(_SWAP_NUM_ID)
+    ctx.obj.register_transform(_SWAP_NUM_CMD)
 
     gpu = accelerator.use_gpu(no_gpu)
 
@@ -61,7 +62,7 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
         fill=mT5,
         num_samples=1,
         original_field="original",
-        critical_field=_SWAP_NUM_ID,
+        critical_field=_SWAP_NUM_CMD,
     )
 
     processed = []
@@ -81,9 +82,6 @@ def transform_swap_num(ctx, datasets, batch_size, no_gpu):
 
         processed.append(dataset)
     return processed
-
-
-_SWAP_NE_CMD = "transf-swp-ne"
 
 
 @click.command(
@@ -108,7 +106,7 @@ _SWAP_NE_CMD = "transf-swp-ne"
     validation.validation_keep_equal_named_entity_count, cli_transforms=[_SWAP_NE_CMD]
 )
 @click.pass_context
-def transform_swap_ne(ctx, datasets, batch_size, no_gpu):
+def swap_ne(ctx, datasets, batch_size, no_gpu):
     """Swaps a single named entity for text using named entity recognition and mT5.
 
     This operation is a transformation.
@@ -173,10 +171,6 @@ def transform_swap_ne(ctx, datasets, batch_size, no_gpu):
     return processed
 
 
-_NEGATE_TRANSF_ID = "transf-negation"
-_NEG_CMD = "transf-neg"
-
-
 @click.command(_NEG_CMD, short_help="Negate the sentence with polyjuice.")
 @click.option(
     "--batch-size",
@@ -186,19 +180,15 @@ _NEG_CMD = "transf-neg"
 )
 @click.option("--no-gpu", is_flag=True, help="Disable gpu.")
 @processor.make
-@processor.post_run(
-    validation.validation_remove_equal, cli_transforms=[_NEGATE_TRANSF_ID]
-)
+@processor.post_run(validation.validation_remove_equal, cli_transforms=[_NEG_CMD])
 @processor.post_run(
     validation.validation_remove_pattern,
     pattern="EMPTY",
-    cli_transforms=[_NEGATE_TRANSF_ID],
+    cli_transforms=[_NEG_CMD],
 )
-@processor.post_run(
-    validation.validation_keep_contradiction, cli_transforms=[_NEGATE_TRANSF_ID]
-)
+@processor.post_run(validation.validation_keep_contradiction, cli_transforms=[_NEG_CMD])
 @click.pass_context
-def transform_negate(ctx, datasets, batch_size, no_gpu):
+def negate(ctx, datasets, batch_size, no_gpu):
     """Negates the received sentences with polyjuice.
 
     This operation is a transformation.
@@ -212,7 +202,7 @@ def transform_negate(ctx, datasets, batch_size, no_gpu):
         click.echo(fmt.no_records_message("Negate the Sentence"))
         return datasets
 
-    ctx.obj.register_transform(_NEGATE_TRANSF_ID)
+    ctx.obj.register_transform(_NEG_CMD)
 
     gpu = accelerator.use_gpu(no_gpu)
 
@@ -220,7 +210,7 @@ def transform_negate(ctx, datasets, batch_size, no_gpu):
     transf = transform.Negation(
         neg_polyjuice=neg_polyjuice,
         original_field="original",
-        critical_field=_NEGATE_TRANSF_ID,
+        critical_field=_NEG_CMD,
     )
 
     pbar = fmt.pbar_from_total(total_records, "Negate the Sentence")
