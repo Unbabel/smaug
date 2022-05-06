@@ -42,7 +42,7 @@ def mismatched_slices(a: T, b: T) -> Tuple[List[slice], List[slice]]:
         if len(idxs) == 0:
             return []
         if len(idxs) == 1:
-            return [(idxs[0], idxs[0] + 1)]
+            return [slice(idxs[0], idxs[0] + 1)]
 
         compressed = []
         last_start = idxs[0]
