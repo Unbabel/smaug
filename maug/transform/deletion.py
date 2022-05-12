@@ -145,9 +145,8 @@ class SpanDelete(Deletion):
 class PunctSpanDelete(Deletion):
     """Removes a span between two punctuation symbols.
 
-    The considered symbols are .,!? .
-
     Args:
+        punct: punctuation symbols to consider.
         low: minimum number of words for a span to be eligible for deletion.
         high: maximum number of words for a span to be eligible for deletion.
         original_field: name of the field to transform in the received records.
@@ -160,10 +159,10 @@ class PunctSpanDelete(Deletion):
     """
 
     __NAME = "punct-span-delete"
-    _PUNCT = re.compile(r"[.!?,]")
 
     def __init__(
         self,
+        punct: str = ".,!?",
         low: int = 4,
         high: int = 10,
         num_samples: int = 1,
@@ -178,30 +177,49 @@ class PunctSpanDelete(Deletion):
             perturbations_field=perturbations_field,
             critical_field=critical_field,
         )
+        self.__punct = re.compile(f"[{punct}]+")
         self.__low = low
         self.__high = high
         self.__rng = random.numpy_seeded_rng()
 
     def _transform(self, sentence: str) -> Optional[str]:
-        spans = self._PUNCT.split(sentence)
+        spans = self.__punct.split(sentence)
         # Indexes of spans that can be dropped.
+        # The first index is not considered as models are
+        # more likelly to fail on the end of the sentence.
         possible_drop_idxs = [
-            i for i, s in enumerate(spans) if self.__low < len(s.split()) < self.__high
+            i
+            for i, s in enumerate(spans)
+            if i > 0 and self.__low < len(s.split()) < self.__high
         ]
-        if len(possible_drop_idxs) <= 2:
+        # Only delete when there are several subsentences,
+        # to avoid deleting the entire content, making the
+        # example trivial to identify.
+        if len(possible_drop_idxs) < 2:
             return None
 
         idx_to_drop = self.__rng.choice(possible_drop_idxs)
         buffer = io.StringIO()
-        line_idx = 0
+        sentence_idx = 0
+
         for i, span in enumerate(spans):
-            # Skip span and punctuation after.
-            if i == idx_to_drop:
-                line_idx += len(span) + 1
-                continue
-            buffer.write(span)
-            line_idx += len(span)
+            if i != idx_to_drop:
+                buffer.write(span)
+            sentence_idx += len(span)
+
             if i < len(spans) - 1:
-                buffer.write(sentence[line_idx])
-                line_idx += 1
-        return buffer.getvalue()
+                punct_after_span = self.__punct.match(sentence, pos=sentence_idx)
+                len_punct_after = punct_after_span.end() - punct_after_span.start()
+                if i != idx_to_drop:
+                    buffer.write(
+                        sentence[sentence_idx : sentence_idx + len_punct_after]
+                    )
+                sentence_idx += len_punct_after
+
+        sentence_no_span = buffer.getvalue().strip()
+        # Too increase credibility of generated sentence,
+        # replace last "," with "." .
+        if not sentence_no_span.endswith((".", "?", "!")):
+            sentence_no_span = f"{sentence_no_span[:-1]}."
+
+        return sentence_no_span

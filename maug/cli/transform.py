@@ -227,6 +227,13 @@ def negate(ctx, datasets, batch_size, no_gpu):
     _DEL_PUNCT_SPAN_CMD, short_help="Removes a span between two punctuation symbols."
 )
 @click.option(
+    "--punct",
+    "-p",
+    default=",.!?",
+    help="punctuation symbols to consider.",
+    show_default=True,
+)
+@click.option(
     "--low",
     "-l",
     type=int,
@@ -244,7 +251,7 @@ def negate(ctx, datasets, batch_size, no_gpu):
 )
 @processor.make
 @click.pass_context
-def delete_punct_span(ctx, datasets, low, high):
+def delete_punct_span(ctx, datasets, punct, low, high):
     """Removes a span between two punctuation symbols.
 
     This operation is a transformation.
@@ -253,12 +260,13 @@ def delete_punct_span(ctx, datasets, low, high):
     """
     total_records = sum(len(datasets["records"]) for datasets in datasets)
     if total_records == 0:
-        click.echo(fmt.no_records_message("Delete a span between punctuation."))
+        click.echo(fmt.no_records_message(f"Delete a span between [{punct}]+ matches."))
         return datasets
 
     ctx.obj.register_transform(_DEL_PUNCT_SPAN_CMD)
 
     transf = transform.PunctSpanDelete(
+        punct=punct,
         low=low,
         high=high,
         num_samples=1,
@@ -268,7 +276,9 @@ def delete_punct_span(ctx, datasets, low, high):
 
     processed = []
 
-    pbar = fmt.pbar_from_total(total_records, "Delete a span between punctuation.")
+    pbar = fmt.pbar_from_total(
+        total_records, f"Delete a span between [{punct}]+ matches."
+    )
     for dataset in datasets:
         old_records = dataset["records"]
         dataset["records"] = transf(old_records)
