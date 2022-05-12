@@ -12,6 +12,7 @@ from maug.cli import validation
 _SWAP_NUM_CMD = "transf-swp-num"
 _SWAP_NE_CMD = "transf-swp-ne"
 _NEG_CMD = "transf-neg"
+_DEL_PUNCT_SPAN_CMD = "transf-del-punct-span"
 
 
 @click.command(_SWAP_NUM_CMD, short_help="Swap a number for text with regex and mT5.")
@@ -219,4 +220,60 @@ def negate(ctx, datasets, batch_size, no_gpu):
 
         processed.append(orig)
 
+    return processed
+
+
+@click.command(
+    _DEL_PUNCT_SPAN_CMD, short_help="Removes a span between two punctuation symbols."
+)
+@click.option(
+    "--low",
+    "-l",
+    type=int,
+    default=4,
+    help="minimum number of words for a span to be eligible for deletion.",
+    show_default=True,
+)
+@click.option(
+    "--high",
+    "-h",
+    type=int,
+    default=10,
+    help="maximum number of words for a span to be eligible for deletion.",
+    show_default=True,
+)
+@processor.make
+@click.pass_context
+def delete_punct_span(ctx, datasets, low, high):
+    """Removes a span between two punctuation symbols.
+
+    This operation is a transformation.
+    It detects the following symbols: ,.!? , and deletes a span between two of them.
+    It also deletes the symbol to the right of the span.
+    """
+    total_records = sum(len(datasets["records"]) for datasets in datasets)
+    if total_records == 0:
+        click.echo(fmt.no_records_message("Delete a span between punctuation."))
+        return datasets
+
+    ctx.obj.register_transform(_DEL_PUNCT_SPAN_CMD)
+
+    transf = transform.PunctSpanDelete(
+        low=low,
+        high=high,
+        num_samples=1,
+        original_field="original",
+        critical_field=_DEL_PUNCT_SPAN_CMD,
+    )
+
+    processed = []
+
+    pbar = fmt.pbar_from_total(total_records, "Delete a span between punctuation.")
+    for dataset in datasets:
+        old_records = dataset["records"]
+        dataset["records"] = transf(old_records)
+
+        pbar.update(len(old_records))
+
+        processed.append(dataset)
     return processed

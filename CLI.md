@@ -18,7 +18,12 @@ The following table details the available CLI commands:
 	    <th>Description</th>  
 	</tr >
 	<tr >
-	    <td rowspan="3">Transform</td>
+	    <td rowspan="4">Transform</td>
+		<td>Delete Span between Punct</td>
+	    <td nowrap="nowrap"><code>transf-del-punct-span</code></td>
+        <td>Removes a single span between two punctuation symbols (<code>.,?!</code>).</td>
+	</tr>
+	<tr>
         <td>Negate</td>
 	    <td nowrap="nowrap"><code>transf-neg</code></td>
         <td>Negates an english sentence using <a href="https://arxiv.org/abs/2101.00288">PolyJuice</a> conditioned for negation.</td>

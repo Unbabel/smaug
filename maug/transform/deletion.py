@@ -1,6 +1,8 @@
 import abc
+import io
 import itertools
 import numpy as np
+import re
 
 from typing import Dict, List, Optional
 
@@ -45,13 +47,13 @@ class Deletion(base.Transform, abc.ABC):
         for orig in repeated_items:
             if self.perturbations_field not in orig:
                 orig[self.perturbations_field] = {}
-            orig[self.perturbations_field][self.critical_field] = self._transform(
-                orig[self.original_field]
-            )
+            perturbation = self._transform(orig[self.original_field])
+            if perturbation:
+                orig[self.perturbations_field][self.critical_field] = perturbation
         return repeated_items
 
     @abc.abstractmethod
-    def _transform(self, sentence: str) -> str:
+    def _transform(self, sentence: str) -> Optional[str]:
         pass
 
 
@@ -138,3 +140,68 @@ class SpanDelete(Deletion):
             splits[higher_idx:],
         )
         return " ".join(critical_splits)
+
+
+class PunctSpanDelete(Deletion):
+    """Removes a span between two punctuation symbols.
+
+    The considered symbols are .,!? .
+
+    Args:
+        low: minimum number of words for a span to be eligible for deletion.
+        high: maximum number of words for a span to be eligible for deletion.
+        original_field: name of the field to transform in the received records.
+        perturbations_field: Field to add to the original records to store
+            the transformed sentences. This field is a dictionary with
+            the transformation name as keys and the perturbed sentences as values.
+        critical_field: Field to add inside the perturbations dictionary.
+        num_samples: number of critical samples that should be generated for each
+            original record.
+    """
+
+    __NAME = "punct-span-delete"
+    _PUNCT = re.compile(r"[.!?,]")
+
+    def __init__(
+        self,
+        low: int = 4,
+        high: int = 10,
+        num_samples: int = 1,
+        original_field: Optional[str] = None,
+        perturbations_field: Optional[str] = None,
+        critical_field: Optional[str] = None,
+    ):
+        super().__init__(
+            name=self.__NAME,
+            num_samples=num_samples,
+            original_field=original_field,
+            perturbations_field=perturbations_field,
+            critical_field=critical_field,
+        )
+        self.__low = low
+        self.__high = high
+        self.__rng = random.numpy_seeded_rng()
+
+    def _transform(self, sentence: str) -> Optional[str]:
+        spans = self._PUNCT.split(sentence)
+        # Indexes of spans that can be dropped.
+        possible_drop_idxs = [
+            i for i, s in enumerate(spans) if self.__low < len(s.split()) < self.__high
+        ]
+        if len(possible_drop_idxs) <= 2:
+            return None
+
+        idx_to_drop = self.__rng.choice(possible_drop_idxs)
+        buffer = io.StringIO()
+        line_idx = 0
+        for i, span in enumerate(spans):
+            # Skip span and punctuation after.
+            if i == idx_to_drop:
+                line_idx += len(span) + 1
+                continue
+            buffer.write(span)
+            line_idx += len(span)
+            if i < len(spans) - 1:
+                buffer.write(sentence[line_idx])
+                line_idx += 1
+        return buffer.getvalue()

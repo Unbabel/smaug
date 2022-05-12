@@ -5,7 +5,7 @@ the generated records.
 """
 from maug.transform.base import Transform
 
-from maug.transform.deletion import RandomDelete, SpanDelete
+from maug.transform.deletion import RandomDelete, SpanDelete, PunctSpanDelete
 
 from maug.transform.mask_and_fill import MaskAndFill
 
