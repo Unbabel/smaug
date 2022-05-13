@@ -22,7 +22,7 @@ def mismatched_indexes(a: T, b: T) -> Tuple[List[int], List[int]]:
     for align_1, align_2 in align[1:]:
         idx_1 = align_1 - 1
         idx_2 = align_2 - 1
-        if a[idx_1] == b[idx_2]:
+        if a[idx_1] == b[idx_2] and idx_1 in idxs_1 and idx_2 in idxs_2:
             idxs_1.remove(idx_1)
             idxs_2.remove(idx_2)
 

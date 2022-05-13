@@ -262,6 +262,13 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
     "-d", "--distance", type=int, required=True, help="Minimum threshold to accept."
 )
 @click.option(
+    "-l",
+    "--level",
+    type=click.Choice(("char", "word"), case_sensitive=False),
+    default="char",
+    help="Level at which to measure the minimum edit distance.",
+)
+@click.option(
     "--transform",
     "cli_transforms",
     multiple=True,
@@ -269,7 +276,7 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
 )
 @processor.make
 @click.pass_context
-def keep_geq_edit_dist(ctx, datasets, distance, cli_transforms):
+def keep_geq_edit_dist(ctx, datasets, distance, level, cli_transforms):
     """Validates if the pertubrations have a minimum edit distance higher than a threshold.
 
     This operation is a validation. It computes the minimum edit distance between the original
@@ -288,7 +295,10 @@ def keep_geq_edit_dist(ctx, datasets, distance, cli_transforms):
             total_records, f"Keep Edit Distance above {distance} for {transform}"
         )
         val = validation.GeqEditDistance(
-            min_dist=distance, original_field="original", critical_field=transform
+            min_dist=distance,
+            level=level,
+            original_field="original",
+            critical_field=transform,
         )
         for dataset in processed:
             not_validated = dataset["records"]

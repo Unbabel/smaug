@@ -84,10 +84,11 @@ class NoRegexMatch(base.Validation):
 
 
 class GeqEditDistance(base.CmpBased):
-    """Filters critical records with a small edit distance to the original one.
+    """Filters perturbations with a small minimum edit distance to the original sentences.
 
     Args:
         min_dist: minimum edit distance that should be accepted.
+        level: level at which to measure the minimum edit distance. Can be word or char.
         original_field: Field in the original records to transform.
         perturbations_field: Field with the perturbations added by the transforms.
             This field is a dictionary with the transform name as keys and the
@@ -96,9 +97,12 @@ class GeqEditDistance(base.CmpBased):
             to test.
     """
 
+    __LEVELS = ("char", "word")
+
     def __init__(
         self,
         min_dist: int,
+        level: str = "char",
         original_field: Optional[str] = None,
         perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
@@ -109,10 +113,16 @@ class GeqEditDistance(base.CmpBased):
             critical_field=critical_field,
         )
         self.__min_dist = min_dist
+        if level not in self.__LEVELS:
+            raise ValueError(f"Unknown level {level}: must be one of {self.__LEVELS}.")
+        self.__level = level
 
     def _verify(
         self,
         original: str,
         critical: str,
     ) -> bool:
+        if self.__level == "word":
+            original = original.split()
+            critical = critical.split()
         return edit_distance(original, critical) >= self.__min_dist
