@@ -13,6 +13,7 @@ _SWAP_NUM_CMD = "transf-swp-num"
 _SWAP_NE_CMD = "transf-swp-ne"
 _NEG_CMD = "transf-neg"
 _DEL_PUNCT_SPAN_CMD = "transf-del-punct-span"
+_INS_TEXT_CMD = "transf-ins-text"
 
 
 @click.command(_SWAP_NUM_CMD, short_help="Swap a number for text with regex and mT5.")
@@ -284,6 +285,78 @@ def delete_punct_span(ctx, datasets, punct, low, high):
         dataset["records"] = transf(old_records)
 
         pbar.update(len(old_records))
+
+        processed.append(dataset)
+    return processed
+
+
+@click.command(_INS_TEXT_CMD, short_help="Insert random text with mT5.")
+@click.option(
+    "--prob",
+    "-p",
+    default=0.1,
+    show_default=True,
+    help="Probability of inserting a mask between two tokens",
+)
+@click.option(
+    "--max-masks",
+    default=3,
+    show_default=True,
+    help="Max masks to add for mT5 to fill.",
+)
+@click.option(
+    "--batch-size",
+    default=16,
+    show_default=True,
+    help="Batch size when processing records.",
+)
+@click.option("--no-gpu", is_flag=True, help="Disable gpu.")
+@processor.make
+@processor.post_run(validation.rm_eq, cli_transforms=[_INS_TEXT_CMD])
+@processor.post_run(
+    validation.rm_pattern, pattern="<extra_id_\d{1,2}>", cli_transforms=[_INS_TEXT_CMD]
+)
+@click.pass_context
+def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
+    """Randomly inserts text using mT5.
+
+    This operation is a transformation.
+    It randomly adds masks between the words of the original sentence and
+    takes as the output the sentence with the masks filled with mT5.
+    """
+    total_records = sum(len(datasets["records"]) for datasets in datasets)
+    if total_records == 0:
+        click.echo(fmt.no_records_message("Insert Text"))
+        return datasets
+
+    ctx.obj.register_transform(_INS_TEXT_CMD)
+
+    gpu = accelerator.use_gpu(no_gpu)
+
+    mT5 = model.MT5(cuda=gpu)
+    m = mask.RandomInsert(model.MT5.masking_pattern(), p=prob, max_masks=max_masks)
+    transf = transform.MaskAndFill(
+        mask=m,
+        fill=mT5,
+        num_samples=1,
+        original_field="original",
+        critical_field=_INS_TEXT_CMD,
+    )
+
+    processed = []
+
+    pbar = fmt.pbar_from_total(total_records, _INS_TEXT_CMD)
+    for dataset in datasets:
+        old_records = dataset["records"]
+        new_records = []
+
+        for i in range(0, len(old_records), batch_size):
+            batch = old_records[i : i + batch_size]
+            records = transf(batch)
+            new_records.extend(records)
+            pbar.update(len(batch))
+
+        dataset["records"] = new_records
 
         processed.append(dataset)
     return processed

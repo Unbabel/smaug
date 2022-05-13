@@ -18,10 +18,15 @@ The following table details the available CLI commands:
 	    <th>Description</th>  
 	</tr >
 	<tr >
-	    <td rowspan="4">Transform</td>
+	    <td rowspan="5">Transform</td>
 		<td>Delete Span between Punct</td>
 	    <td nowrap="nowrap"><code>transf-del-punct-span</code></td>
         <td>Removes a single span between two punctuation symbols (<code>.,?!</code>).</td>
+	</tr>
+	<tr>
+        <td>Insert Text</td>
+	    <td nowrap="nowrap"><code>transf-ins-text</code></td>
+        <td>Insert random text in multiple places using <a href="https://arxiv.org/abs/2010.11934">Google's mT5</a> model.</td>
 	</tr>
 	<tr>
         <td>Negate</td>

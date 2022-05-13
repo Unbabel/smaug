@@ -53,6 +53,7 @@ augment.add_command(read.read_csv)
 augment.add_command(read.read_lines)
 
 augment.add_command(transform.delete_punct_span)
+augment.add_command(transform.insert_text)
 augment.add_command(transform.negate)
 augment.add_command(transform.swap_ne)
 augment.add_command(transform.swap_num)

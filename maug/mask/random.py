@@ -1,5 +1,8 @@
 import functools
 import io
+import numpy as np
+
+from typing import Optional
 
 from maug import random
 from maug.mask import base
@@ -41,9 +44,10 @@ class RandomInsert(base.Mask):
     probability.
     """
 
-    def __init__(self, pattern=None, p: float = 0.2):
+    def __init__(self, pattern=None, p: float = 0.2, max_masks: Optional[int] = None):
         super(RandomInsert, self).__init__(pattern)
         self.__p = p
+        self.__max_masks = max_masks
         self.__rng = random.numpy_seeded_rng()
 
     @functools.singledispatchmethod
@@ -63,6 +67,11 @@ class RandomInsert(base.Mask):
         mask_idxs = self.__rng.choice(
             [False, True], size=len(splits) - 1, p=[self.__p, 1 - self.__p]
         )
+        (true_idxs,) = np.nonzero(mask_idxs)
+        if self.__max_masks is not None and len(true_idxs) > self.__max_masks:
+            true_idxs = self.__rng.choice(true_idxs, size=self.__max_masks)
+            mask_idxs = np.full_like(mask_idxs, False)
+            mask_idxs[true_idxs] = True
 
         buffer = io.StringIO()
         mask_iter = base.MaskIterator(self.pattern)
