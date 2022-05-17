@@ -1,23 +1,25 @@
 import click
+import json
 import pandas as pd
 import typing
 
 from maug import random
 from maug.cli import fmt
+from maug.cli import param
 from maug.cli import processor
 
 
-@click.command("read-lines", short_help="Read sentences from a text file.")
+@click.command("io-read-lines", short_help="Read sentences from a text file.")
 @click.option("-p", "--path", required=True, help="Path for file to read.")
 @click.option("-l", "--lang", required=True, help="Language for the sentences.")
 @click.option(
     "-s",
     "--sample",
-    type=int,
-    help="Number of sentences to sample. If not specified, all sentences are used.",
+    type=param.INT_OR_FLOAT,
+    help="Number or percentage of sentences to sample. If not specified, all sentences are used.",
 )
 @processor.make
-def read_lines(prev, path: str, lang: str, sample: typing.Union[int, None]):
+def read_lines(prev, path: str, lang: str, sample: typing.Union[int, float, None]):
     """Reads sentences from a text file.
 
     The file is expected to have one sentence per line. The language must
@@ -30,9 +32,13 @@ def read_lines(prev, path: str, lang: str, sample: typing.Union[int, None]):
     sentences = fmt.pbar_from_iterable(sentences, f"Read Sentences from {path}")
     records = [{"original": s, "perturbations": {}} for s in sentences]
 
-    if sample is not None and len(records) > sample:
-        rng = random.numpy_seeded_rng()
-        records = rng.choice(records, sample, replace=False).tolist()
+    if sample is not None:
+        if isinstance(sample, float):
+            sample = int(sample * len(records))
+
+        if len(records) > sample:
+            rng = random.numpy_seeded_rng()
+            records = rng.choice(records, sample, replace=False).tolist()
 
     dataset = {"lang": lang, "records": records}
 
@@ -41,7 +47,7 @@ def read_lines(prev, path: str, lang: str, sample: typing.Union[int, None]):
     return stream
 
 
-@click.command("read-csv", short_help="Read data from a CSV file.")
+@click.command("io-read-csv", short_help="Read data from a CSV file.")
 @click.option("-p", "--path", required=True, help="Path for file to read.")
 @click.option(
     "-s",
@@ -89,3 +95,35 @@ def read_csv(prev, path, sample: typing.Union[int, None]):
     stream = [el for el in prev]
     stream.extend(datasets)
     return stream
+
+
+@click.command("io-write-json", short_help="Write records to a JSON file.")
+@click.option("-p", "--path", required=True, help="File path to store the records.")
+@click.option(
+    "--indent",
+    default=2,
+    type=int,
+    show_default=True,
+    help="Number of spaces to indent the file.",
+)
+@processor.make
+def write_json(datasets, path, indent):
+    """Writes all records to a JSON file.
+
+    This is an utility operation to store the generated records. It converts the records
+    to JSON objects and stores them in a file, with a format for easy reading.
+
+    The records are stored in a non-compressed format that is more user friendly.
+    If the objective is to reduce file size, another write format should be used.
+    """
+
+    records = []
+    total_records = sum(len(dataset["records"]) for dataset in datasets)
+    pbar = fmt.pbar_from_total(total_records, f"Write JSON to {path}")
+    for dataset in datasets:
+        records.extend(dataset["records"])
+        pbar.update(len(dataset["records"]))
+
+    with open(path, "w") as fp:
+        json.dump(records, fp, ensure_ascii=False, indent=indent)
+    return datasets

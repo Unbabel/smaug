@@ -4,10 +4,9 @@ import typing
 from maug import random
 from maug.cli import context
 from maug.cli import processor
-from maug.cli import read
+from maug.cli import io
 from maug.cli import transform
 from maug.cli import validation
-from maug.cli import write
 
 
 @click.group(chain=True)
@@ -49,9 +48,6 @@ def process_commands(ctx, processors, no_post_run: bool, seed: typing.Union[int,
     _ = [r for r in stream]
 
 
-augment.add_command(read.read_csv)
-augment.add_command(read.read_lines)
-
 augment.add_command(transform.delete_punct_span)
 augment.add_command(transform.insert_text)
 augment.add_command(transform.negate)
@@ -65,4 +61,6 @@ augment.add_command(validation.keep_eq_num_count)
 augment.add_command(validation.rm_eq)
 augment.add_command(validation.rm_pattern)
 
-augment.add_command(write.write_json)
+augment.add_command(io.read_csv)
+augment.add_command(io.read_lines)
+augment.add_command(io.write_json)
