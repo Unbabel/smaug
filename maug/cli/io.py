@@ -64,6 +64,8 @@ def read_csv(prev, path, sample: typing.Union[int, None]):
     """
 
     data = pd.read_csv(path, index_col=False, header=None)
+    # Handle empty strings
+    data[1].fillna("", inplace=True)
     rows = list(data.iterrows())
 
     datasets = []
