@@ -75,9 +75,9 @@ The following table details the available CLI commands:
 	    <td>Verifies if the perturbed sentence does not have a specific regular expression. Useful with language models that may leave special tokens behind.</td>
 	</tr>
 	<tr>
-        <td rowspan="5">Utility</td>
+        <td rowspan="5">Utilities</td>
 	    <td>Read Lines</td>
-	    <td nowrap="nowrap"><code>read-lines</code></td>
+	    <td nowrap="nowrap"><code>io-read-lines</code></td>
 	    <td>Reads sentences from a text file, where each line is a sentence.</td>
 	</tr>
     <tr>
@@ -87,7 +87,7 @@ The following table details the available CLI commands:
 	</tr>
     <tr>
 	    <td>Write JSON </td>
-	    <td nowrap="nowrap"><code>write-json</code></td>
+	    <td nowrap="nowrap"><code>io-write-json</code></td>
 	    <td>Writes the perturbed sentences in a human-readable JSON format.</td>
 	</tr>
 </table>
