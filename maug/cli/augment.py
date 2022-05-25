@@ -1,7 +1,10 @@
 import click
 import typing
 
+import yaml
+
 from maug import random
+from maug.cli import config
 from maug.cli import context
 from maug.cli import processor
 from maug.cli import io
@@ -9,12 +12,15 @@ from maug.cli import transform
 from maug.cli import validation
 
 
-@click.group(chain=True)
+@click.group(chain=True, invoke_without_command=True)
+@click.option(
+    "-c", "--cfg", type=str, help="Configuration file for the augmentation pipeline."
+)
 @click.option(
     "--no-post-run", is_flag=True, help="Disable default post runs for processors."
 )
 @click.option("-s", "--seed", type=int, help="Seed for reproducibility.")
-def augment(no_post_run, seed):
+def augment(cfg, no_post_run, seed):
     """Executes an augmentation pipeline with multiple operations.
 
     Transform operations generate synthetic records from original records.
@@ -28,9 +34,20 @@ def augment(no_post_run, seed):
 
 @augment.result_callback()
 @click.pass_context
-def process_commands(ctx, processors, no_post_run: bool, seed: typing.Union[int, None]):
+def process_commands(
+    ctx, processors, cfg: str, no_post_run: bool, seed: typing.Union[int, None]
+):
     ctx.obj = context.Context()
 
+    if cfg is not None:
+        if len(processors) > 0:
+            raise ValueError("No commands should be specified with --cfg argument.")
+        _run_cfg_mode(cfg, no_post_run, seed)
+    else:
+        _run_chain_mode(ctx, processors, no_post_run, seed)
+
+
+def _run_chain_mode(ctx, processors, no_post_run: bool, seed: typing.Union[int, None]):
     post_run = not no_post_run
 
     if seed:
@@ -46,6 +63,12 @@ def process_commands(ctx, processors, no_post_run: bool, seed: typing.Union[int,
 
     # Evaluate the stream and throw away the items.
     _ = [r for r in stream]
+
+
+def _run_cfg_mode(cfg: str, no_post_run: bool, seed: typing.Union[int, None]):
+    args = config.to_args(cfg, no_post_run, seed)
+    click.echo(f"Executing: augment {' '.join(args)}")
+    augment(args)
 
 
 augment.add_command(transform.delete_punct_span)
