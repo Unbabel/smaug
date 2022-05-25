@@ -52,45 +52,41 @@ def read_lines(prev, path: str, lang: str, sample: typing.Union[int, float, None
 @click.option(
     "-s",
     "--sample",
-    type=int,
-    help="Number of records to sample from each dataset. If not specified, the entire datasets are used.",
+    type=param.INT_OR_FLOAT,
+    help="Number or percentage of sentences to sample. If not specified, all sentences are used.",
 )
 @processor.make
 def read_csv(prev, path, sample: typing.Union[int, None]):
     """Reads records from a csv file.
 
-    The file is expected to have a language pair column "lp", that splits the
-    records into multiple datasets, one for each language. Languages are expected
-    to be in the format {source_lang}-{target_lang}.
+    The first file column will be interpreted as the language and the
+    second as the sentence.
     """
 
-    def df_to_dataset(df: pd.DataFrame, lp: str) -> typing.Dict:
-        lp_data = df[df["lp"] == lp]
-        records = [
-            {"original": row["ref"], "perturbations": {}, **row.to_dict()}
-            for _, row in lp_data.iterrows()
-        ]
-        _, target_lang = lp.split("-")
-        return {
-            "lang": target_lang,
-            "records": records,
-        }
+    data = pd.read_csv(path, index_col=False, header=None)
+    rows = list(data.iterrows())
 
-    def sample_dataset(ds: typing.Dict):
-        not_sampled = ds["records"]
-        rng = random.numpy_seeded_rng()
-        if len(not_sampled) > sample:
-            sampled = rng.choice(not_sampled, sample, replace=False)
-            ds["records"] = sampled.tolist()
-        return ds
+    datasets = []
+    for idx, row in fmt.pbar_from_iterable(rows, f"Read CSV from {path}"):
+        lang = row[0]
+        sentence = row[1]
 
-    data = pd.read_csv(path)
-    lang_pairs = data["lp"].unique()
-    lang_pairs = fmt.pbar_from_iterable(lang_pairs, f"Read CSV from {path}")
+        if idx == 0 or rows[idx - 1][1][0] != lang:
+            datasets.append({"lang": lang, "records": []})
 
-    datasets = (df_to_dataset(data, lp) for lp in lang_pairs)
-    if sample:
-        datasets = (sample_dataset(ds) for ds in datasets)
+        # Always use last dataset
+        datasets[-1]["records"].append({"original": sentence, "perturbations": {}})
+
+    if sample is not None:
+        for dataset in datasets:
+            records = dataset["records"]
+            if isinstance(sample, float):
+                sample = int(sample * len(records))
+
+            if len(records) > sample:
+                rng = random.numpy_seeded_rng()
+                records = rng.choice(records, sample, replace=False).tolist()
+            dataset["records"] = records
 
     stream = [el for el in prev]
     stream.extend(datasets)

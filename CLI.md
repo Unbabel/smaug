@@ -83,7 +83,7 @@ The following table details the available CLI commands:
     <tr>
 	    <td>Read CSV</td>
 	    <td nowrap="nowrap"><code>read-csv</code></td>
-	    <td>Reads a csv file with multiple language pairs, storing all columns. The original sentence will be associated to the "ref" column.</td>
+	    <td>Reads the sentences from a csv file. Each line of the file has the sentence to perturb and the sentence language.</td>
 	</tr>
     <tr>
 	    <td>Write JSON </td>

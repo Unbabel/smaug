@@ -15,7 +15,7 @@ The CLI offers a way to read, transform, validate and write perturbed sentences 
 To apply a single transform to a set of sentences, execute the following command:
 
 ```
-$ augment read-lines -p <input_file> -l <input_lang_code> <transf_name> write-json -p <output_file>
+$ augment io-read-lines -p <input_file> -l <input_lang_code> <transf_name> io-write-json -p <output_file>
 ```
 
 > `<transf_name>` is the name of the transform to apply (see this [section](OPERATIONS.md#transforms) for a list of available transforms).
@@ -31,7 +31,7 @@ $ augment read-lines -p <input_file> -l <input_lang_code> <transf_name> write-js
 To apply multiple transforms, just specify them in arbitrary order between the read and write operations:
 
 ```
-$ augment read-lines -p <input_file> -l <input_lang_code> <transf_name_1> <transf_name_2> ... write-json -p <output_file>
+$ augment io-read-lines -p <input_file> -l <input_lang_code> <transf_name_1> <transf_name_2> ... io-write-json -p <output_file>
 ```
 
 ### Multiple Input Files
@@ -39,7 +39,7 @@ $ augment read-lines -p <input_file> -l <input_lang_code> <transf_name_1> <trans
 To read from multiple input files, also specify them in arbitrary order:
 
 ```
-$ augment read-lines -p <input_file_1> -l <input_lang_code_1> read-lines -p <input_file_2> -l <input_lang_code_2> ... <transf_name_1> <transf_name_2> ... write-json -p <output_file>
+$ augment io-read-lines -p <input_file_1> -l <input_lang_code_1> read-lines -p <input_file_2> -l <input_lang_code_2> ... <transf_name_1> <transf_name_2> ... io-write-json -p <output_file>
 ```
 
 ## Python API
