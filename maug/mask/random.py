@@ -64,6 +64,10 @@ class RandomInsert(base.Mask):
 
     def __process_single(self, text: str) -> str:
         splits = text.split()
+        # Not enought splits to insert mask.
+        if len(splits) < 2:
+            return text
+
         mask_idxs = self.__rng.choice(
             [False, True], size=len(splits) - 1, p=[self.__p, 1 - self.__p]
         )
