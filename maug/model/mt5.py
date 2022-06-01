@@ -35,16 +35,24 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
         replace_outputs: If using masks in the input, specifies whether the output
             should be the inputs with the replaced masks or the mT5 original masked
             language model output.
+        clean_outputs: If replacing output, specifies whether small transformations should
+            be aplied to the output sentences to improve their quality.
         cuda: Whether to use cuda enabled gpu or not.
     """
 
-    def __init__(self, replace_outputs: bool = True, cuda: bool = False) -> None:
+    def __init__(
+        self,
+        replace_outputs: bool = True,
+        clean_outputs: bool = True,
+        cuda: bool = False,
+    ) -> None:
         super().__init__()
-        self.__model, self.__tokenizer = self.__load()
+        self._model, self._tokenizer = self.__load()
         if cuda:
-            self.__model.cuda()
-        self.__replace_outputs = replace_outputs
-        self.__cuda = cuda
+            self._model.cuda()
+        self._replace_outputs = replace_outputs
+        self._clean_outputs = clean_outputs
+        self._cuda = cuda
 
     @classmethod
     def masking_pattern(cls) -> MaskingPattern:
@@ -63,21 +71,24 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
         return self.__generate(text)
 
     def __generate(self, text: List[str], num_return_sequences: int = 1) -> List[str]:
-        input_ids = self.__tokenizer(text, padding=True, return_tensors="pt").input_ids
-        if self.__cuda:
+        input_ids = self._tokenizer(text, padding=True, return_tensors="pt").input_ids
+        if self._cuda:
             input_ids = input_ids.cuda()
 
-        output_ids = self.__model.generate(
+        output_ids = self._model.generate(
             input_ids,
             do_sample=True,
             top_k=50,
             num_return_sequences=num_return_sequences,
         )
 
-        outputs = self.__tokenizer.batch_decode(output_ids, skip_special_tokens=True)
+        outputs = self._tokenizer.batch_decode(output_ids, skip_special_tokens=True)
 
-        if self.__replace_outputs:
+        if self._replace_outputs:
             outputs = [self.replace_masks(s, o) for s, o in zip(text, outputs)]
+
+            if self._clean_outputs:
+                outputs = [self._clean_output(o) for o in (outputs)]
 
         return outputs
 
@@ -91,6 +102,11 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
             source = re.sub(mask, span.strip().replace("\\", "\\\\"), source)
 
         return source
+
+    def _clean_output(self, output: str) -> str:
+        if output.startswith((".", ",", "!", "?")):
+            output = output[1:]
+        return output.strip()
 
     @staticmethod
     @functools.lru_cache(maxsize=1)
