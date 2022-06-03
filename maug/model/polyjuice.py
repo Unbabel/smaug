@@ -1,5 +1,6 @@
 import functools
 import re
+import typing
 import stanza
 import torch
 import transformers
@@ -19,7 +20,7 @@ _EOF_TOKEN = "<|endoftext|>"
 _NEGATION = "[negation]"
 
 SingleNegPolyjuiceInput = str
-SingleNegPolyjuiceOutput = Tuple[str, Optional[str]]
+SingleNegPolyjuiceOutput = Optional[str]
 
 NegPolyjuiceInput = Union[SingleNegPolyjuiceInput, List[SingleNegPolyjuiceInput]]
 NegPolyjuiceOutput = Union[SingleNegPolyjuiceOutput, List[SingleNegPolyjuiceOutput]]
@@ -45,15 +46,11 @@ class NegPolyjuice:
 
     def __init__(self, cuda: bool = False):
         self.__stanza_pos = self.__load_stanza_pos(cuda)
-        polyjuice_model, polyjuice_tokenizer = self.__load_polyjuice()
-        self.__pad_token_id = polyjuice_tokenizer.convert_tokens_to_ids(_EOF_TOKEN)
-        self.__polyjuice = transformers.pipeline(
-            "text-generation",
-            model=polyjuice_model,
-            tokenizer=polyjuice_tokenizer,
-            framework="pt",
-            device=0 if cuda else -1,
-        )
+        self._model, self._tokenizer = self.__load_polyjuice()
+        if cuda:
+            self._model.cuda()
+
+        self._cuda = cuda
         self.__rng = random.numpy_seeded_rng()
 
     @functools.singledispatchmethod
@@ -74,19 +71,37 @@ class NegPolyjuice:
         sentences_with_prompts = [(s, self.__add_negation_prompt(s)) for s in text]
         prompts = [p for _, p in sentences_with_prompts if p is not None]
         with torch.no_grad():
-            generation_out = self.__polyjuice(
-                prompts,
-                num_beams=5,
-                early_stopping=True,
-                pad_token_id=self.__pad_token_id,
-                max_length=1000,
-                do_sample=False,
-                no_repeat_ngram_size=2,
-            )
+            outputs = []
+            for p in prompts:
+                inputs = self._tokenizer(
+                    p,
+                    padding=False,
+                    truncation=True,
+                    max_length=1024 - 1,
+                    return_tensors="pt",
+                )
+                if self._cuda:
+                    inputs = {k: v.cuda() for k, v in inputs.items()}
+
+                output_ids = self._model.generate(
+                    **inputs,
+                    num_beams=5,
+                    early_stopping=True,
+                    pad_token_id=self._tokenizer.eos_token_id,
+                    max_length=1024,
+                    do_sample=False,
+                    no_repeat_ngram_size=2,
+                )
+
+                output = self._tokenizer.batch_decode(
+                    output_ids, skip_special_tokens=True
+                )[0]
+
+                outputs.append(output)
 
         # We have a result for each prompt, but not for each original
         # sentence.
-        results = (self.__extract_results(g)[0] for g in generation_out)
+        results = (self.__extract_results(o) for o in outputs)
 
         return [
             # Replace prompt with result if prompt existed
@@ -113,24 +128,24 @@ class NegPolyjuice:
         return f"{doc} {_PERTURB_TOK} {_NEGATION} {masked} {_SEP_TOK}"
 
     @staticmethod
-    def __extract_results(single_output):
-        results = []
-        for option in single_output:
-            prompt, answers = option["generated_text"].split(_SEP_TOK)
-            _, phrase_with_blank = prompt.split(_NEGATION)
-            answers = [x.strip() for x in answers.split(_ANSWER_TOK)][:-1]
-            answers = [x if x != _EMPTY_TOK else "" for x in answers]
-            for a in answers:
-                if a == "":
-                    phrase_with_blank = re.sub(
-                        r" %s" % re.escape(_BLANK_TOK), a, phrase_with_blank, count=1
-                    )
-                else:
-                    phrase_with_blank = re.sub(
-                        r"%s" % re.escape(_BLANK_TOK), a, phrase_with_blank, count=1
-                    )
-            results.append(phrase_with_blank.strip())
-        return results
+    def __extract_results(single_output) -> typing.Optional[str]:
+        prompt_and_answers = single_output.split(_SEP_TOK)
+        if len(prompt_and_answers) < 2:
+            return None
+        prompt, answers = prompt_and_answers
+        _, phrase_with_blank = prompt.split(_NEGATION)
+        answers = [x.strip() for x in answers.split(_ANSWER_TOK)][:-1]
+        answers = [x if x != _EMPTY_TOK else "" for x in answers]
+        for a in answers:
+            if a == "":
+                phrase_with_blank = re.sub(
+                    r" %s" % re.escape(_BLANK_TOK), a, phrase_with_blank, count=1
+                )
+            else:
+                phrase_with_blank = re.sub(
+                    r"%s" % re.escape(_BLANK_TOK), a, phrase_with_blank, count=1
+                )
+        return phrase_with_blank.strip()
 
     @staticmethod
     def __get_prev_aux_if_verb(sentence, i) -> Optional[Tuple]:
