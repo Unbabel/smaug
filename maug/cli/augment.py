@@ -1,8 +1,6 @@
 import click
 import typing
 
-import yaml
-
 from maug import random
 from maug.cli import config
 from maug.cli import context
@@ -78,9 +76,10 @@ augment.add_command(transform.swap_ne)
 augment.add_command(transform.swap_num)
 
 augment.add_command(validation.keep_contradiction)
-augment.add_command(validation.keep_geq_edit_dist)
 augment.add_command(validation.keep_eq_ne_count)
 augment.add_command(validation.keep_eq_num_count)
+augment.add_command(validation.keep_geq_edit_dist)
+augment.add_command(validation.keep_leq_char_ins)
 augment.add_command(validation.rm_eq)
 augment.add_command(validation.rm_pattern)
 

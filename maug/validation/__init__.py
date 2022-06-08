@@ -16,4 +16,5 @@ from maug.validation.strings import (
     MinRelativeLength,
     NotEqual,
     NoRegexMatch,
+    LeqCharInsertions,
 )

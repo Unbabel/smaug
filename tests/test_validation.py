@@ -129,6 +129,6 @@ def test_max_char_insertions():
             "perturbations": {},
         },
     ]
-    val = strings.MaxCharInsertions(chars="<>()[]{}", max_insertions=1)
+    val = strings.LeqCharInsertions(chars="<>()[]{}", max_insertions=1)
     validated = val(records)
     assert expected == validated

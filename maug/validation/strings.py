@@ -129,7 +129,7 @@ class GeqEditDistance(base.CmpBased):
         return edit_distance(original, critical) >= self.__min_dist
 
 
-class MaxCharInsertions(base.CmpBased):
+class LeqCharInsertions(base.CmpBased):
     """Filters perturbations with many insertions of specific caracters when compared to the original.
 
     This validation takes a set of characters and adds up how many insertions of these charactes

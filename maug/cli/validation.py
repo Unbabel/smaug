@@ -13,6 +13,7 @@ _KEEP_CONTRADICTION_CMD = "val-keep-contradiction"
 _KEEP_EQ_NUM_CMD = "val-keep-eq-num"
 _KEEP_EQ_NE_CMD = "val-keep-eq-ne"
 _KEEP_GEQ_EDIT_DIST_CMD = "val-keep-geq-edit-dist"
+_KEEP_LEQ_CHAR_INSERT_CMD = "val-keep-leq-char-ins"
 
 
 @click.command(_RM_EQ_CMD, short_help="Remove sythetic records equal to the original.")
@@ -297,6 +298,66 @@ def keep_geq_edit_dist(ctx, datasets, distance, level, cli_transforms):
         val = validation.GeqEditDistance(
             min_dist=distance,
             level=level,
+            original_field="original",
+            critical_field=transform,
+        )
+        for dataset in processed:
+            not_validated = dataset["records"]
+            dataset["records"] = val(not_validated)
+            pbar.update(len(not_validated))
+    return processed
+
+
+@click.command(
+    _KEEP_LEQ_CHAR_INSERT_CMD,
+    help="Keep perturbations with a total of char insertions below a threshold.",
+)
+@click.option(
+    "-c",
+    "--chars",
+    default="<>()[]{}",
+    show_default=True,
+    help="Chars to consider (each individual char is considered)",
+)
+@click.option(
+    "-i",
+    "--max_insertions",
+    type=int,
+    required=True,
+    help="Maximum insertions to accept.",
+)
+@click.option(
+    "--transform",
+    "cli_transforms",
+    multiple=True,
+    help="Transforms to filter with this validation. If not specified all are validated.",
+)
+@processor.make
+@click.pass_context
+def keep_leq_char_ins(ctx, datasets, chars, max_insertions, cli_transforms):
+    """Validates if the pertubrations have a maximum number of character insertions.
+
+    This operation is a validation. It computes the number of insertions of specific characters
+    in the perturbed sentences, and only allows perturbations with this number bellow a threshold.
+    """
+    transforms = cli_transforms if cli_transforms else list(ctx.obj.iter_transforms())
+
+    total_records = sum(len(orig["records"]) for orig in datasets)
+    if total_records == 0:
+        click.echo(
+            fmt.no_records_message(f"Keep {chars} insertions below {max_insertions}")
+        )
+        return datasets
+
+    processed = [dataset for dataset in datasets]
+    for transform in transforms:
+        pbar = fmt.pbar_from_total(
+            total_records,
+            f"Keep {chars} insertions below {max_insertions} for {transform}",
+        )
+        val = validation.LeqCharInsertions(
+            chars=chars,
+            max_insertions=max_insertions,
             original_field="original",
             critical_field=transform,
         )
