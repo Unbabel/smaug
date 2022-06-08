@@ -96,3 +96,38 @@ The following table details the available CLI commands:
 	    <td>Writes the perturbed sentences in a human-readable JSON format.</td>
 	</tr>
 </table>
+
+### Configuration File Specification
+
+The cli tool can also be used with a `yaml` configuration file as follows:
+
+```
+augment --cfg <path_to_config_file>
+```
+
+An example of a configuration file is:
+
+```yaml
+pipeline:
+- cmd: io-read-csv
+  path: <path to input file>
+- cmd: transf-neg
+- cmd: transf-ins-text
+  validations:
+  - cmd: val-keep-geq-edit-dist
+    distance: 8
+    level: word
+- cmd: val-rm-pattern
+  pattern: hello-world
+- cmd: io-write-json
+  path: <path to output file>
+seed: 42
+no-post-run: True
+```
+
+The first pipeline section is mandatory and specifies a list with all the commands to be executed. After that section, other cli arguments can be specified (such as `seed` in this example). The arguments are the same as in the cli command, but without the `--` in the beginning. Boolean flags also do not have `--` and can have the value True of False.
+
+
+Inside the pipeline section, each command is identified with `cmd: <command name>`. The remaining tags in the command entry are the arguments for the command. 
+
+Inside transforms, a special `validations` tag can be used to specify validations for the command only. Validations for all previous transforms can be specified as a regular command in the pipeline. In the above exaple `val-keep-geq-edit-dist` is only applied to `transf-ins-text` but `val-rm-pattern` is applied to `transf-neg` and `transf-ins-text`.

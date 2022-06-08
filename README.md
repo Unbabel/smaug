@@ -42,7 +42,13 @@ To read from multiple input files, also specify them in arbitrary order:
 $ augment io-read-lines -p <input_file_1> -l <input_lang_code_1> read-lines -p <input_file_2> -l <input_lang_code_2> ... <transf_name_1> <transf_name_2> ... io-write-json -p <output_file>
 ```
 
-## Python API
+### Configuration File
+
+To facilitate the previous operations, it is possible to specify the entire pipeline from a [configuration file](CLI.md#configuration-file-specification):
+
+```
+$ augment --cfg <path_to_config_file>
+```
 
 TODO
 
