@@ -321,7 +321,7 @@ def keep_geq_edit_dist(ctx, datasets, distance, level, cli_transforms):
 )
 @click.option(
     "-i",
-    "--max_insertions",
+    "--max-insertions",
     type=int,
     required=True,
     help="Maximum insertions to accept.",
