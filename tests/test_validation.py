@@ -78,3 +78,57 @@ def test_no_regex_match():
     val = strings.NoRegexMatch(r"<mask_\d+>")
     output = val(records)
     assert expected == output
+
+
+def test_max_char_insertions():
+    records = [
+        {
+            "original": "Some sentence without any special characters.",
+            "perturbations": {
+                "critical": "Other sentence without chars.",
+            },
+        },
+        {
+            "original": "Some sentence without any special characters.",
+            "perturbations": {
+                "critical": "Other sentence with <special chars>.",
+            },
+        },
+        {
+            "original": "Some sentence with some <special characters.",
+            "perturbations": {
+                "critical": "Other sentence with mode <special chars].",
+            },
+        },
+        {
+            "original": "Sentence with two special characters[].",
+            "perturbations": {
+                "critical": "Other sentence with many <<<special chars].",
+            },
+        },
+    ]
+    expected = [
+        {
+            "original": "Some sentence without any special characters.",
+            "perturbations": {
+                "critical": "Other sentence without chars.",
+            },
+        },
+        {
+            "original": "Some sentence without any special characters.",
+            "perturbations": {},
+        },
+        {
+            "original": "Some sentence with some <special characters.",
+            "perturbations": {
+                "critical": "Other sentence with mode <special chars].",
+            },
+        },
+        {
+            "original": "Sentence with two special characters[].",
+            "perturbations": {},
+        },
+    ]
+    val = strings.MaxCharInsertions(chars="<>()[]{}", max_insertions=1)
+    validated = val(records)
+    assert expected == validated
