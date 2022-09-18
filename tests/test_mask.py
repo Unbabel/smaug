@@ -1,10 +1,10 @@
 import pytest
 
-from maug._itertools import ResetableIterator
-from maug.mask import MaskIterator
-from maug.mask import numerical
-from maug.mask import random
-from maug.mask import func
+from smaug._itertools import ResetableIterator
+from smaug.mask import MaskIterator
+from smaug.mask import numerical
+from smaug.mask import random
+from smaug.mask import func
 
 
 class MaskingFunction(ResetableIterator):

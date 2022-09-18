@@ -1,5 +1,5 @@
 import pytest
-from maug import _align
+from smaug import _align
 
 
 @pytest.mark.parametrize(

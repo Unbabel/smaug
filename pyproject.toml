@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "maug"
+name = "smaug"
 version = "0.1.0"
 description = ""
 authors = ["DuarteMRAlves <duartemalves@tecnico.ulisboa.pt>"]
 
 [tool.poetry.scripts]
-augment = "maug.cli:augment"
+augment = "smaug.cli:augment"
 
 [tool.poetry.dependencies]
 python = "^3.8"

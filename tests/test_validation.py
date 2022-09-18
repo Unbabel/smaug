@@ -1,5 +1,5 @@
-from maug.validation import strings
-from maug.validation import numerical
+from smaug.validation import strings
+from smaug.validation import numerical
 
 
 def test_equal_number_count_validation():

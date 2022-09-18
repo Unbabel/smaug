@@ -1,10 +1,10 @@
-# maug
+# SMAUG: Sentence-level Multilingual AUGmentation
 
-`maug` is a package for multilingual data augmentation. It offers transformations focused on changing specific aspects of sentences, such as Named Entities, Numbers, etc.
+`smaug` is a package for multilingual data augmentation. It offers transformations focused on changing specific aspects of sentences, such as Named Entities, Numbers, etc.
 
 # Usage
 
-The `maug` package can be used as a command line interface (CLI) or by directly importing and calling the package Python API. To use `maug`, first install it by following these [instructions](#install).
+The `smaug` package can be used as a command line interface (CLI) or by directly importing and calling the package Python API. To use `smaug`, first install it by following these [instructions](#install).
 
 ## Command Line Interface
 
@@ -61,7 +61,7 @@ To install this package, execute the following steps:
 * Clone this git repository and install the project.
 
 ```
-$ git clone https://github.com/DuarteMRAlves/maug.git
-$ cd maug
+$ git clone https://github.com/DuarteMRAlves/smaug.git
+$ cd smaug
 $ poetry install
 ```

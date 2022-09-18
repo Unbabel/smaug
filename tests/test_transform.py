@@ -1,7 +1,7 @@
 import pytest
 
-from maug.transform import deletion
-from maug._itertools import repeat_items
+from smaug.transform import deletion
+from smaug._itertools import repeat_items
 
 
 @pytest.mark.parametrize(

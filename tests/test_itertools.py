@@ -1,5 +1,5 @@
 import pytest
-from maug import _itertools
+from smaug import _itertools
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-from maug import __version__
+from smaug import __version__
 
 
 def test_version():
