@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import typing
 
+from smaug import pipeline
 from smaug import random
 from smaug.cli import fmt
 from smaug.cli import param
@@ -30,7 +31,7 @@ def read_lines(prev, path: str, lang: str, sample: typing.Union[int, float, None
         sentences = [l[:-1] for l in fp.readlines()]
 
     sentences = fmt.pbar_from_iterable(sentences, f"Read Sentences from {path}")
-    records = [{"original": s, "perturbations": {}} for s in sentences]
+    records = [pipeline.State(original=s) for s in sentences]
 
     if sample is not None:
         if isinstance(sample, float):
@@ -77,8 +78,8 @@ def read_csv(prev, path, sample: typing.Union[int, None]):
             datasets.append({"lang": lang, "records": []})
 
         # Always use last dataset
-        datasets[-1]["records"].append({"original": sentence, "perturbations": {}})
-
+        datasets[-1]["records"].append(pipeline.State(original=sentence))
+    print(datasets)
     if sample is not None:
         for dataset in datasets:
             records = dataset["records"]
@@ -115,13 +116,23 @@ def write_json(datasets, path, indent):
     If the objective is to reduce file size, another write format should be used.
     """
 
+    class _StateEncoder(json.JSONEncoder):
+        def default(self, o: typing.Any) -> typing.Any:
+            if isinstance(o, pipeline.State):
+                return {
+                    "original": o.original,
+                    "perturbations": o.perturbations,
+                    "metadata": o.metadata,
+                }
+            return super().default(o)
+
     records = []
     total_records = sum(len(dataset["records"]) for dataset in datasets)
     pbar = fmt.pbar_from_total(total_records, f"Write JSON to {path}")
     for dataset in datasets:
         records.extend(dataset["records"])
         pbar.update(len(dataset["records"]))
-
+    print(datasets)
     with open(path, "w") as fp:
-        json.dump(records, fp, ensure_ascii=False, indent=indent)
+        json.dump(records, fp, ensure_ascii=False, indent=indent, cls=_StateEncoder)
     return datasets
