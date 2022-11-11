@@ -37,14 +37,18 @@ class MaskAndFill(base.Transform):
         critical_field: Optional[str] = None,
     ):
         super().__init__(
-            name=self.__NAME, error_type=self.__get_type(mask), critical_field=critical_field,
+            name=self.__NAME,
+            error_type=self.__get_type(mask),
+            critical_field=critical_field,
         )
         self.__masking = mask
         self.__fill = fill
         self.__num_samples = num_samples
 
     def __call__(self, original: List[pipeline.State]) -> List[pipeline.State]:
-        repeated_items: List[pipeline.State] = list(repeat_items(original, self.__num_samples))
+        repeated_items: List[pipeline.State] = list(
+            repeat_items(original, self.__num_samples)
+        )
 
         original_sentences = [x.original for x in repeated_items]
         masked = self.__masking(original_sentences)

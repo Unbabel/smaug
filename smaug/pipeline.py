@@ -13,7 +13,9 @@ class State:
     original: Sentence
 
     # The sentences with the perturbations, identified by their id.
-    perturbations: Dict[PerturbationId, Sentence] = dataclasses.field(default_factory=dict)
+    perturbations: Dict[PerturbationId, Sentence] = dataclasses.field(
+        default_factory=dict
+    )
 
     # Other metadata that the perturbations can output, identified by their id.
     metadata: Dict[PerturbationId, Any] = dataclasses.field(default_factory=dict)

@@ -23,7 +23,9 @@ class Mistranslation(base.Transform, abc.ABC):
         critical_field: Optional[str] = None,
     ):
         super().__init__(
-            name=name, critical_field=critical_field, error_type=error.ErrorType.MISTRANSLATION,
+            name=name,
+            critical_field=critical_field,
+            error_type=error.ErrorType.MISTRANSLATION,
         )
 
 
@@ -207,7 +209,9 @@ class Negation(Mistranslation):
         self.__num_samples = num_samples
 
     def __call__(self, original: List[pipeline.State]) -> List[pipeline.State]:
-        repeated_items: List[pipeline.State] = list(repeat_items(original, self.__num_samples))
+        repeated_items: List[pipeline.State] = list(
+            repeat_items(original, self.__num_samples)
+        )
 
         original_sentences = [x.original for x in repeated_items]
         negated = self.__neg_polyjuice(original_sentences)

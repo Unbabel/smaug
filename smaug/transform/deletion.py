@@ -29,12 +29,16 @@ class Deletion(base.Transform, abc.ABC):
         critical_field: Optional[str] = None,
     ):
         super().__init__(
-            name=name, critical_field=critical_field, error_type=error.ErrorType.DELETION,
+            name=name,
+            critical_field=critical_field,
+            error_type=error.ErrorType.DELETION,
         )
         self.__num_samples = num_samples
 
     def __call__(self, original: List[pipeline.State]) -> List[pipeline.State]:
-        repeated_items: List[pipeline.State] = list(repeat_items(original, self.__num_samples))
+        repeated_items: List[pipeline.State] = list(
+            repeat_items(original, self.__num_samples)
+        )
         for orig in repeated_items:
             perturbation = self._transform(orig.original)
             if perturbation:
@@ -88,7 +92,9 @@ class SpanDelete(Deletion):
         critical_field: Optional[str] = None,
     ):
         super(SpanDelete, self).__init__(
-            name=self.__NAME, num_samples=num_samples, critical_field=critical_field,
+            name=self.__NAME,
+            num_samples=num_samples,
+            critical_field=critical_field,
         )
         self.__min_size = min_size
         self.__rng = random.numpy_seeded_rng()

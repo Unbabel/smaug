@@ -2,8 +2,9 @@ import re
 import collections
 
 from nltk.metrics import edit_distance
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, List, Optional
 
+from smaug import pipeline
 from smaug.validation import base
 
 
@@ -23,10 +24,6 @@ class MinRelativeLength(base.CmpBased):
 
     Args:
         threshold: minimum ratio len(critical) / len(original) that should be accepted.
-        original_field: Field in the original records to transform.
-        perturbations_field: Field with the perturbations added by the transforms.
-            This field is a dictionary with the transform name as keys and the
-            perturbed sentences as values.
         critical_field: Field inside the perturbations dictionary with the perturbation
             to test.
     """
@@ -34,15 +31,9 @@ class MinRelativeLength(base.CmpBased):
     def __init__(
         self,
         threshold: float,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
-        super().__init__(
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
-        )
+        super().__init__(critical_field=critical_field)
         self.__threshold = threshold
 
     def _verify(
@@ -61,26 +52,17 @@ class NoRegexMatch(base.Validation):
     def __init__(
         self,
         pattern: str,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
-        super().__init__(
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
-        )
+        super().__init__(critical_field=critical_field)
         self.__pattern = re.compile(pattern)
 
-    def __call__(self, records: List[Dict]) -> List[Dict]:
+    def __call__(self, records: List[pipeline.State]) -> List[pipeline.State]:
         for r in records:
-            if self.perturbations_field not in r:
+            if self.critical_field not in r.perturbations:
                 continue
-            perturbations = r[self.perturbations_field]
-            if self.critical_field not in perturbations:
-                continue
-            if self.__pattern.search(perturbations[self.critical_field]) is not None:
-                del perturbations[self.critical_field]
+            if self.__pattern.search(r.perturbations[self.critical_field]) is not None:
+                del r.perturbations[self.critical_field]
         return records
 
 
@@ -90,10 +72,6 @@ class GeqEditDistance(base.CmpBased):
     Args:
         min_dist: minimum edit distance that should be accepted.
         level: level at which to measure the minimum edit distance. Can be word or char.
-        original_field: Field in the original records to transform.
-        perturbations_field: Field with the perturbations added by the transforms.
-            This field is a dictionary with the transform name as keys and the
-            perturbed sentences as values.
         critical_field: Field inside the perturbations dictionary with the perturbation
             to test.
     """
@@ -104,15 +82,9 @@ class GeqEditDistance(base.CmpBased):
         self,
         min_dist: int,
         level: str = "char",
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
-        super().__init__(
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
-        )
+        super().__init__(critical_field=critical_field)
         self.__min_dist = min_dist
         if level not in self.__LEVELS:
             raise ValueError(f"Unknown level {level}: must be one of {self.__LEVELS}.")
@@ -138,10 +110,6 @@ class LeqCharInsertions(base.CmpBased):
     Args:
         chars: String of characters to consider (each individual character will be considered).
         max_insertions: Maximum number of insertions.
-        original_field: Field in the original records to transform.
-        perturbations_field: Field with the perturbations added by the transforms.
-            This field is a dictionary with the transform name as keys and the
-            perturbed sentences as values.
         critical_field: Field inside the perturbations dictionary with the perturbation
             to test.
     """
@@ -149,16 +117,10 @@ class LeqCharInsertions(base.CmpBased):
     def __init__(
         self,
         chars: str,
-        max_insertions: Optional[int] = 0,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
+        max_insertions: int = 0,
         critical_field: Optional[str] = None,
     ):
-        super().__init__(
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
-        )
+        super().__init__(critical_field=critical_field)
         self._chars = set(chars)
         self._max_ins = max_insertions
 
