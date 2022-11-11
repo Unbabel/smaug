@@ -13,56 +13,8 @@ from smaug.typing import Text
 class NamedEntity(base.Mask):
     """Masks named entities in a given text according to a probability."""
 
-    __FOUR_TAGS = ("PER", "LOC", "ORG", "MISC")
-
-    __EIGHTEEN_TAGS = (
-        "PERSON",
-        "NORP",  # Nationalities / Religious / Political Group
-        "FAC",  # Facility
-        "ORG",  # Organization
-        "GPE",  # Countries / Cities / States
-        "LOC",  # Location
-        "PRODUCT",
-        "EVENT",
-        "WORK_OF_ART",
-        "LAW",
-        "LANGUAGE",
-    )
-
-    __BLNSP_TAGS = ("EVENT", "LOCATION", "ORGANIZATION", "PERSON", "PRODUCT")
-
-    __ITALIAN_TAGS = ("LOC", "ORG", "PER")
-
-    __MYANMAR_TAGS = (
-        "LOC",
-        "NE",  # Miscellaneous
-        "ORG",
-        "PNAME",
-        "RACE",
-    )
-
-    __DEFAULT_TAGS = {
-        "af": __FOUR_TAGS,
-        "ar": __FOUR_TAGS,
-        "bg": __BLNSP_TAGS,
-        "zh": __EIGHTEEN_TAGS,
-        "nl": __FOUR_TAGS,
-        "en": __EIGHTEEN_TAGS,
-        "fi": __FOUR_TAGS,
-        "fr": __FOUR_TAGS,
-        "de": __FOUR_TAGS,
-        "hu": __FOUR_TAGS,
-        "it": __ITALIAN_TAGS,
-        "my": __MYANMAR_TAGS,
-        "ru": __FOUR_TAGS,
-        "es": __FOUR_TAGS,
-        "uk": __FOUR_TAGS,
-        "vi": __FOUR_TAGS,
-    }
-
     def __init__(
         self,
-        lang: str,
         model: model.StanzaNER,
         pattern: MaskingPattern = None,
         entities: Iterable[str] = None,
@@ -72,7 +24,7 @@ class NamedEntity(base.Mask):
         super(NamedEntity, self).__init__(pattern=pattern)
 
         if entities is None:
-            entities = self.__DEFAULT_TAGS[lang]
+            entities = model.tags
         self.__entities = set(entities)
         for e in entities:
             if e not in model.tags:

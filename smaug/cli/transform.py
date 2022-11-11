@@ -149,7 +149,6 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             processed.append(dataset)
             continue
         m = mask.NamedEntity(
-            lang=lang,
             model=model.StanzaNER(lang=lang, use_gpu=gpu),
             pattern=model.MT5.masking_pattern(),
             max_masks=1,
