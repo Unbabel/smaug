@@ -4,8 +4,9 @@ import itertools
 import numpy as np
 import re
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 
+from smaug import pipeline
 from smaug import random
 from smaug.transform import base
 from smaug.transform import error
@@ -17,10 +18,6 @@ class Deletion(base.Transform, abc.ABC):
 
     Args:
         name: name of the Transform.
-        original_field: name of the field to transform in the received records.
-        perturbations_field: Field to add to the original records to store
-            the transformed sentences. This field is a dictionary with
-            the transformation name as keys and the perturbed sentences as values.
         critical_field: Field to add inside the perturbations dictionary.
         num_samples: number of critical samples that should be generated for each
             original record."""
@@ -29,27 +26,19 @@ class Deletion(base.Transform, abc.ABC):
         self,
         name: str,
         num_samples: int = 1,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
         super().__init__(
-            name=name,
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
-            error_type=error.ErrorType.DELETION,
+            name=name, critical_field=critical_field, error_type=error.ErrorType.DELETION,
         )
         self.__num_samples = num_samples
 
-    def __call__(self, original: List[Dict]) -> List[Dict]:
-        repeated_items = list(repeat_items(original, self.__num_samples))
+    def __call__(self, original: List[pipeline.State]) -> List[pipeline.State]:
+        repeated_items: List[pipeline.State] = list(repeat_items(original, self.__num_samples))
         for orig in repeated_items:
-            if self.perturbations_field not in orig:
-                orig[self.perturbations_field] = {}
-            perturbation = self._transform(orig[self.original_field])
+            perturbation = self._transform(orig.original)
             if perturbation:
-                orig[self.perturbations_field][self.critical_field] = perturbation
+                orig.perturbations[self.critical_field] = perturbation
         return repeated_items
 
     @abc.abstractmethod
@@ -62,10 +51,6 @@ class RandomDelete(Deletion):
 
     Args:
         p: probability of deleting a word
-        original_field: name of the field to transform in the received records.
-        perturbations_field: Field to add to the original records to store
-            the transformed sentences. This field is a dictionary with
-            the transformation name as keys and the perturbed sentences as values.
         critical_field: Field to add inside the perturbations dictionary.
         num_samples: number of critical samples to generate for each original
             record.
@@ -76,15 +61,11 @@ class RandomDelete(Deletion):
     def __init__(
         self,
         num_samples: int = 1,
-        p: int = 0.2,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
+        p: float = 0.2,
         critical_field: Optional[str] = None,
     ):
         super(RandomDelete, self).__init__(
             name=self.__NAME,
-            original_field=original_field,
-            perturbations_field=perturbations_field,
             critical_field=critical_field,
             num_samples=num_samples,
         )
@@ -104,16 +85,10 @@ class SpanDelete(Deletion):
         self,
         min_size: float = 0.25,
         num_samples: int = 1,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
         super(SpanDelete, self).__init__(
-            name=self.__NAME,
-            num_samples=num_samples,
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
+            name=self.__NAME, num_samples=num_samples, critical_field=critical_field,
         )
         self.__min_size = min_size
         self.__rng = random.numpy_seeded_rng()
@@ -149,10 +124,6 @@ class PunctSpanDelete(Deletion):
         punct: punctuation symbols to consider.
         low: minimum number of words for a span to be eligible for deletion.
         high: maximum number of words for a span to be eligible for deletion.
-        original_field: name of the field to transform in the received records.
-        perturbations_field: Field to add to the original records to store
-            the transformed sentences. This field is a dictionary with
-            the transformation name as keys and the perturbed sentences as values.
         critical_field: Field to add inside the perturbations dictionary.
         num_samples: number of critical samples that should be generated for each
             original record.
@@ -166,15 +137,11 @@ class PunctSpanDelete(Deletion):
         low: int = 4,
         high: int = 10,
         num_samples: int = 1,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
         super().__init__(
             name=self.__NAME,
             num_samples=num_samples,
-            original_field=original_field,
-            perturbations_field=perturbations_field,
             critical_field=critical_field,
         )
         self.__punct = re.compile(f"[{punct}]+")

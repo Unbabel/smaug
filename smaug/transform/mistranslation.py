@@ -5,6 +5,7 @@ import numpy as np
 from typing import Dict, Iterable, List, Optional, Set
 
 from smaug import model
+from smaug import pipeline
 from smaug import random
 from smaug.transform import base
 from smaug.transform import error
@@ -19,16 +20,10 @@ class Mistranslation(base.Transform, abc.ABC):
     def __init__(
         self,
         name: str,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
         super().__init__(
-            name=name,
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
-            error_type=error.ErrorType.MISTRANSLATION,
+            name=name, critical_field=critical_field, error_type=error.ErrorType.MISTRANSLATION,
         )
 
 
@@ -45,10 +40,6 @@ class NamedEntityShuffle(Mistranslation):
         side: Sentence where to apply the shuffling. Must be one of
             { source, target }, for the source and target sentences.
         lang: Language of the sentences where the transform is applied.
-        original_field: name of the field to transform in the received records.
-        perturbations_field: Field to add to the original records to store
-            the transformed sentences. This field is a dictionary with
-            the transformation name as keys and the perturbed sentences as values.
         critical_field: Field to add inside the perturbations dictionary.
     """
 
@@ -85,7 +76,7 @@ class NamedEntityShuffle(Mistranslation):
         "RACE",
     )
 
-    __DEFAULT_TAGS = {
+    __DEFAULT_TAGS: Dict[str, Iterable[str]] = {
         "af": __FOUR_TAGS,
         "ar": __FOUR_TAGS,
         "bg": __BLNSP_TAGS,
@@ -109,16 +100,9 @@ class NamedEntityShuffle(Mistranslation):
         lang: str,
         model: model.StanzaNER,
         entities: Optional[Iterable[str]] = None,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
-        super().__init__(
-            name=self.__NAME,
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
-        )
+        super().__init__(name=self.__NAME, critical_field=critical_field)
 
         if entities is None:
             entities = self.__DEFAULT_TAGS[lang]
@@ -131,13 +115,11 @@ class NamedEntityShuffle(Mistranslation):
         self.__entities = entities
         self.__rng = random.numpy_seeded_rng()
 
-    def __call__(self, original: List[Dict]) -> List[Dict]:
+    def __call__(self, original: List[pipeline.State]) -> List[pipeline.State]:
         for orig in original:
-            if self.perturbations_field not in orig:
-                orig[self.perturbations_field] = {}
-            orig[self.perturbations_field][
-                self.critical_field
-            ] = self.__shuffle_all_entity_types(orig[self.original_field])
+            perturbed = self.__shuffle_all_entity_types(orig.original)
+            if perturbed is not None:
+                orig.perturbations[self.critical_field] = perturbed
 
         return original
 
@@ -206,10 +188,6 @@ class Negation(Mistranslation):
     Args:
         neg_polyjuice: Polyjuice model conditioned on negation.
         num_samples: Number of critical records to generate for each original records.
-        original_field: name of the field to transform in the received records.
-        perturbations_field: Field to add to the original records to store
-            the transformed sentences. This field is a dictionary with
-            the transformation name as keys and the perturbed sentences as values.
         critical_field: Field to add inside the perturbations dictionary.
     """
 
@@ -219,30 +197,24 @@ class Negation(Mistranslation):
         self,
         neg_polyjuice: model.NegPolyjuice,
         num_samples: int = 1,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
         super().__init__(
             self.__NAME,
-            original_field=original_field,
-            perturbations_field=perturbations_field,
             critical_field=critical_field,
         )
         self.__neg_polyjuice = neg_polyjuice
         self.__num_samples = num_samples
 
-    def __call__(self, original: List[Dict]) -> List[Dict]:
-        repeated_items = list(repeat_items(original, self.__num_samples))
+    def __call__(self, original: List[pipeline.State]) -> List[pipeline.State]:
+        repeated_items: List[pipeline.State] = list(repeat_items(original, self.__num_samples))
 
-        original_sentences = [x[self.original_field] for x in repeated_items]
+        original_sentences = [x.original for x in repeated_items]
         negated = self.__neg_polyjuice(original_sentences)
 
         for orig, n in zip(repeated_items, negated):
             if n is None:
                 continue
-            if self.perturbations_field not in orig:
-                orig[self.perturbations_field] = {}
-            orig[self.perturbations_field][self.critical_field] = n
+            orig.perturbations[self.critical_field] = n
 
         return repeated_items

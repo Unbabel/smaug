@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 
 from smaug import mask
 from smaug import model
+from smaug import pipeline
 from smaug.transform import base
 from smaug.transform import error
 from smaug._itertools import repeat_items
@@ -21,10 +22,6 @@ class MaskAndFill(base.Transform):
         mask: Mask object to use when masking sentences.
         fill: Model to fill the masked sentences.
         num_samples: Number of generated samples to create.
-        original_field: name of the field to transform in the received records.
-        perturbations_field: Field to add to the original records to store
-            the transformed sentences. This field is a dictionary with
-            the transformation name as keys and the perturbed sentences as values.
         critical_field: Field to add inside the perturbations dictionary.
     """
 
@@ -37,32 +34,24 @@ class MaskAndFill(base.Transform):
         mask: mask.Mask,
         fill: model.MaskedLanguageModel,
         num_samples: int = 1,
-        original_field: Optional[str] = None,
-        perturbations_field: Optional[str] = None,
         critical_field: Optional[str] = None,
     ):
         super().__init__(
-            name=self.__NAME,
-            error_type=self.__get_type(mask),
-            original_field=original_field,
-            perturbations_field=perturbations_field,
-            critical_field=critical_field,
+            name=self.__NAME, error_type=self.__get_type(mask), critical_field=critical_field,
         )
         self.__masking = mask
         self.__fill = fill
         self.__num_samples = num_samples
 
-    def __call__(self, original: List[Dict]) -> List[Dict]:
-        repeated_items = list(repeat_items(original, self.__num_samples))
+    def __call__(self, original: List[pipeline.State]) -> List[pipeline.State]:
+        repeated_items: List[pipeline.State] = list(repeat_items(original, self.__num_samples))
 
-        original = [x[self.original_field] for x in repeated_items]
-        masked = self.__masking(original)
+        original_sentences = [x.original for x in repeated_items]
+        masked = self.__masking(original_sentences)
         filled = self.__fill(masked)
 
         for orig, f in zip(repeated_items, filled):
-            if self.perturbations_field not in orig:
-                orig[self.perturbations_field] = {}
-            orig[self.perturbations_field][self.critical_field] = f
+            orig.perturbations[self.critical_field] = f
 
         return repeated_items
 
