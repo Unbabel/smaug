@@ -29,5 +29,5 @@ class IsContradiction(base.Validation):
             logits = self.__roberta(nli_input)
             predicted_id = logits.argmax().item()
             if predicted_id != self.__roberta.contradiction_id:
-                del r.perturbations[self.critical_field]
+                base.del_perturbation(self.critical_field, r)
         return records

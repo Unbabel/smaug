@@ -79,7 +79,7 @@ def read_csv(prev, path, sample: typing.Union[int, None]):
 
         # Always use last dataset
         datasets[-1]["records"].append(pipeline.State(original=sentence))
-    print(datasets)
+
     if sample is not None:
         for dataset in datasets:
             records = dataset["records"]
@@ -132,7 +132,7 @@ def write_json(datasets, path, indent):
     for dataset in datasets:
         records.extend(dataset["records"])
         pbar.update(len(dataset["records"]))
-    print(datasets)
+
     with open(path, "w") as fp:
         json.dump(records, fp, ensure_ascii=False, indent=indent, cls=_StateEncoder)
     return datasets

@@ -63,9 +63,16 @@ class CmpBased(Validation, abc.ABC):
             if self.critical_field not in r.perturbations:
                 continue
             if not self._verify(r.original, r.perturbations[self.critical_field]):
-                del r.perturbations[self.critical_field]
+                del_perturbation(self.critical_field, r)
         return records
 
     @abc.abstractmethod
     def _verify(self, original: str, critical: str) -> bool:
         pass
+
+
+def del_perturbation(field: str, state: pipeline.State):
+    if field in state.perturbations:
+        del state.perturbations[field]
+    if field in state.metadata:
+        del state.metadata[field]

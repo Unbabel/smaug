@@ -95,14 +95,11 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
         outputs = [self.replace_masks(s, o) for s, o in zip(text, outputs)]
 
         if self._clean_outputs:
-            outputs = [(self._clean_output(o), s) for o, s in (outputs)]
+            outputs = [self._clean_output(o, spans) for o, spans in (outputs)]
 
         return outputs
 
     def replace_masks(self, source, output):
-        print()
-        print("Replace Start", "-" * 20)
-        print("Output:", output)
         spans = _MASK_REGEX.split(output)[1:]
 
         masking_pattern = self.masking_pattern()
@@ -113,27 +110,28 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
 
             mask = next(masking_pattern)
 
-            print("Source:", source)
-            print("Span:", escaped_span)
-            print("Mask:", mask)
-
             pattern_match = re.search(mask, source)
-            print("Pattern match:", pattern_match)
             if pattern_match:
                 first_idx = pattern_match.start()
                 last_idx = first_idx + len(escaped_span)
                 generated_spans.append((first_idx, last_idx))
-                print("Generated spans:", generated_spans)
 
             source = re.sub(mask, escaped_span, source)
-            print()
 
         return source, generated_spans
 
-    def _clean_output(self, output: str) -> str:
-        if output.startswith((".", ",", "!", "?")):
+    def _clean_output(
+        self, output: str, spans: base.GeneratedSpans
+    ) -> Tuple[str, base.GeneratedSpans]:
+        while output.startswith((".", ",", "!", "?", " ")):
             output = output[1:]
-        return output.strip()
+            spans = [(s[0] - 1, s[1] - 1) for s in spans]
+        clean = output.rstrip()
+        if len(spans) > 1:
+            # Update last span to be atmost the output size
+            last = spans[-1]
+            spans[-1] = (last[0], min(last[1], len(clean)))
+        return clean, spans
 
     @staticmethod
     @functools.lru_cache(maxsize=1)

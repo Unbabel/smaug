@@ -62,7 +62,7 @@ class NoRegexMatch(base.Validation):
             if self.critical_field not in r.perturbations:
                 continue
             if self.__pattern.search(r.perturbations[self.critical_field]) is not None:
-                del r.perturbations[self.critical_field]
+                base.del_perturbation(self.critical_field, r)
         return records
 
 
