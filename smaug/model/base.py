@@ -1,6 +1,7 @@
 import abc
+import dataclasses
 
-from typing import Any
+from typing import Any, List, Tuple, Union
 
 from smaug.typing import Text
 from smaug.model.typing import MaskingPattern
@@ -22,6 +23,18 @@ class TokenClassification(abc.ABC):
         pass
 
 
+GeneratedSpan = Tuple[int, int]
+GeneratedSpans = List[GeneratedSpan]
+
+
+@dataclasses.dataclass
+class MaskedLanguageModelOutput:
+
+    text: Text
+
+    spans: Union[GeneratedSpans, List[GeneratedSpans]]
+
+
 class MaskedLanguageModel(abc.ABC):
     """Base class for masked language models.
 
@@ -36,4 +49,10 @@ class MaskedLanguageModel(abc.ABC):
         model.
 
         If the masking pattern is an iterator, a new object is created at each invocation."""
+        pass
+
+    @abc.abstractmethod
+    def __call__(
+        self, text: Text, return_spans: bool = False
+    ) -> MaskedLanguageModelOutput:
         pass

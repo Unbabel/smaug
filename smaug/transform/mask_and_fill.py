@@ -53,9 +53,12 @@ class MaskAndFill(base.Transform):
         original_sentences = [x.original for x in repeated_items]
         masked = self.__masking(original_sentences)
         filled = self.__fill(masked)
+        print(filled)
+        for orig, t in zip(repeated_items, filled.text):
+            orig.perturbations[self.critical_field] = t
 
-        for orig, f in zip(repeated_items, filled):
-            orig.perturbations[self.critical_field] = f
+        for orig, s in zip(repeated_items, filled.spans):
+            orig.metadata[self.critical_field] = s
 
         return repeated_items
 
