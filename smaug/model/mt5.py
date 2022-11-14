@@ -3,7 +3,7 @@ import logging
 import re
 import transformers
 
-from typing import List
+from typing import List, Tuple
 
 from smaug import _itertools
 from smaug.model import base
@@ -42,7 +42,6 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
 
     def __init__(
         self,
-        replace_outputs: bool = True,
         clean_outputs: bool = True,
         cuda: bool = False,
     ) -> None:
@@ -50,7 +49,6 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
         self._model, self._tokenizer = self.__load()
         if cuda:
             self._model.cuda()
-        self._replace_outputs = replace_outputs
         self._clean_outputs = clean_outputs
         self._cuda = cuda
 
@@ -59,18 +57,28 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
         return _MT5MaskFunction()
 
     @functools.singledispatchmethod
-    def __call__(self, text: Text) -> Text:
+    def __call__(self, text: Text) -> base.MaskedLanguageModelOutput:
         raise NotImplementedError(f"Not implemented for type {type(text)}")
 
     @__call__.register
-    def _(self, text: str):
-        return self.__generate([text])[0]
+    def _(self, text: str) -> base.MaskedLanguageModelOutput:
+        texts_w_spans = self.__generate([text])
+        texts = [x[0] for x in texts_w_spans]
+        spans = [x[1] for x in texts_w_spans]
+        return base.MaskedLanguageModelOutput(text=texts[0], spans=spans[0])
 
     @__call__.register
-    def _(self, text: list):
-        return self.__generate(text)
+    def _(self, text: list) -> base.MaskedLanguageModelOutput:
+        texts_w_spans = self.__generate(text)
+        texts = [x[0] for x in texts_w_spans]
+        spans = [x[1] for x in texts_w_spans]
+        return base.MaskedLanguageModelOutput(text=texts, spans=spans)
 
-    def __generate(self, text: List[str], num_return_sequences: int = 1) -> List[str]:
+    def __generate(
+        self,
+        text: List[str],
+        num_return_sequences: int = 1,
+    ) -> List[Tuple[str, base.GeneratedSpans]]:
         input_ids = self._tokenizer(text, padding=True, return_tensors="pt").input_ids
         if self._cuda:
             input_ids = input_ids.cuda()
@@ -84,11 +92,10 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
 
         outputs = self._tokenizer.batch_decode(output_ids, skip_special_tokens=True)
 
-        if self._replace_outputs:
-            outputs = [self.replace_masks(s, o) for s, o in zip(text, outputs)]
+        outputs = [self.replace_masks(s, o) for s, o in zip(text, outputs)]
 
-            if self._clean_outputs:
-                outputs = [self._clean_output(o) for o in (outputs)]
+        if self._clean_outputs:
+            outputs = [self._clean_output(o, spans) for o, spans in (outputs)]
 
         return outputs
 
@@ -96,17 +103,35 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
         spans = _MASK_REGEX.split(output)[1:]
 
         masking_pattern = self.masking_pattern()
+        generated_spans = []
         for span in spans:
-            mask = next(masking_pattern)
             # Avoid bad escape char by replacing single \ with \\
-            source = re.sub(mask, span.strip().replace("\\", "\\\\"), source)
+            escaped_span = span.strip().replace("\\", "\\\\")
 
-        return source
+            mask = next(masking_pattern)
 
-    def _clean_output(self, output: str) -> str:
-        if output.startswith((".", ",", "!", "?")):
+            pattern_match = re.search(mask, source)
+            if pattern_match:
+                first_idx = pattern_match.start()
+                last_idx = first_idx + len(escaped_span)
+                generated_spans.append((first_idx, last_idx))
+
+            source = re.sub(mask, escaped_span, source)
+
+        return source, generated_spans
+
+    def _clean_output(
+        self, output: str, spans: base.GeneratedSpans
+    ) -> Tuple[str, base.GeneratedSpans]:
+        while output.startswith((".", ",", "!", "?", " ")):
             output = output[1:]
-        return output.strip()
+            spans = [(s[0] - 1, s[1] - 1) for s in spans]
+        clean = output.rstrip()
+        if len(spans) > 1:
+            # Update last span to be atmost the output size
+            last = spans[-1]
+            spans[-1] = (last[0], min(last[1], len(clean)))
+        return clean, spans
 
     @staticmethod
     @functools.lru_cache(maxsize=1)

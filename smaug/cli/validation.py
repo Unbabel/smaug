@@ -42,7 +42,7 @@ def rm_eq(ctx, datasets, cli_transforms):
 
     for transform in transforms:
         pbar = fmt.pbar_from_total(total_records, f"Remove Equal for {transform}")
-        val = validation.NotEqual(original_field="original", critical_field=transform)
+        val = validation.NotEqual(critical_field=transform)
 
         for dataset in processed:
             not_validated = dataset["records"]
@@ -87,9 +87,7 @@ def rm_pattern(ctx, datasets, pattern, cli_transforms):
         pbar = fmt.pbar_from_total(
             total_records, f'Remove Pattern "{pattern}" for {transform}'
         )
-        val = validation.NoRegexMatch(
-            pattern=pattern, original_field="original", critical_field=transform
-        )
+        val = validation.NoRegexMatch(pattern=pattern, critical_field=transform)
         for dataset in processed:
             not_validated = dataset["records"]
             dataset["records"] = val(not_validated)
@@ -139,9 +137,7 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Contradictions for {transform}"
         )
-        val = validation.IsContradiction(
-            roberta, original_field="original", critical_field=transform
-        )
+        val = validation.IsContradiction(roberta, critical_field=transform)
         for dataset in processed:
             not_validated = dataset["records"]
             validated = []
@@ -183,9 +179,7 @@ def keep_eq_num_count(ctx, datasets, cli_transforms):
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Equal Numbers Count for {transform}"
         )
-        val = validation.EqualNumbersCount(
-            original_field="original", critical_field=transform
-        )
+        val = validation.EqualNumbersCount(critical_field=transform)
         for dataset in processed:
             not_validated = dataset["records"]
             dataset["records"] = val(not_validated)
@@ -242,7 +236,6 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
                 continue
             val = validation.EqualNamedEntityCount(
                 ner_model=model.StanzaNER(lang=lang, use_gpu=gpu),
-                original_field="original",
                 critical_field=transform,
             )
             not_validated = dataset["records"]
@@ -298,7 +291,6 @@ def keep_geq_edit_dist(ctx, datasets, distance, level, cli_transforms):
         val = validation.GeqEditDistance(
             min_dist=distance,
             level=level,
-            original_field="original",
             critical_field=transform,
         )
         for dataset in processed:
@@ -358,7 +350,6 @@ def keep_leq_char_ins(ctx, datasets, chars, max_insertions, cli_transforms):
         val = validation.LeqCharInsertions(
             chars=chars,
             max_insertions=max_insertions,
-            original_field="original",
             critical_field=transform,
         )
         for dataset in processed:
