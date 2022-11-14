@@ -27,7 +27,7 @@ _INS_TEXT_CMD = "transf-ins-text"
 @processor.make
 @processor.post_run(validation.rm_eq, cli_transforms=[_SWAP_NUM_CMD])
 @processor.post_run(
-    validation.rm_pattern, pattern="<extra_id_r\d{1,2}>", cli_transforms=[_SWAP_NUM_CMD]
+    validation.rm_pattern, pattern=r"<extra_id_\d{1,2}>", cli_transforms=[_SWAP_NUM_CMD]
 )
 @processor.post_run(
     validation.keep_leq_char_ins,
@@ -101,7 +101,7 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 @processor.make
 @processor.post_run(validation.rm_eq, cli_transforms=[_SWAP_NE_CMD])
 @processor.post_run(
-    validation.rm_pattern, pattern="<extra_id_r\d{1,2}>", cli_transforms=[_SWAP_NE_CMD]
+    validation.rm_pattern, pattern=r"<extra_id_\d{1,2}>", cli_transforms=[_SWAP_NE_CMD]
 )
 @processor.post_run(
     validation.keep_leq_char_ins,
