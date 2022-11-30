@@ -10,4 +10,3 @@ from smaug.model.opus_mt import OpusMT
 from smaug.model.polyjuice import NegPolyjuice
 from smaug.model.roberta import RobertaMNLI
 from smaug.model.stanza_ner import StanzaNER
-from smaug.model.typing import MaskingPattern
