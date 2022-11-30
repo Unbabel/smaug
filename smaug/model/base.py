@@ -1,10 +1,9 @@
 import abc
 import dataclasses
 
-from typing import Any, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 from smaug.typing import Text
-from smaug.model.typing import MaskingPattern
 
 
 class Text2Text(abc.ABC):
@@ -35,6 +34,24 @@ class MaskedLanguageModelOutput:
     spans: Union[GeneratedSpans, List[GeneratedSpans]]
 
 
+# FIXME: Copy of mask.MaskFunction to avoid circular import
+MaskFunction = Callable[[int], str]
+"""Retrieves the ith mask token given i.
+
+For methods where masks in the same sentences are different, this function
+will be called with 0, 1, 2, ... and should return the 1st, 2nd, 3rd, ... masks.
+
+For methods that do not distinguish masks, this function should always return
+the same value.
+
+Args:
+    i: mask index.
+
+Returns:
+    mask token to insert
+"""
+
+
 class MaskedLanguageModel(abc.ABC):
     """Base class for masked language models.
 
@@ -44,11 +61,8 @@ class MaskedLanguageModel(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def masking_pattern(cls) -> MaskingPattern:
-        """Defines the masking pattern that should be used to interact with this
-        model.
-
-        If the masking pattern is an iterator, a new object is created at each invocation."""
+    def masking_func(cls) -> MaskFunction:
+        """Defines the masking function that should be used to interact with this model."""
         pass
 
     @abc.abstractmethod

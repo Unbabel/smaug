@@ -1,5 +1,8 @@
 import click
+import functools
+import re
 
+from smaug import batching
 from smaug import mask
 from smaug import model
 from smaug import transform
@@ -60,9 +63,14 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
     gpu = accelerator.use_gpu(no_gpu)
 
     mT5 = model.MT5(cuda=gpu)
-    m = mask.Number(model.MT5.masking_pattern(), max_mask=1)
+    mask_func = functools.partial(
+        mask.mask_numbers,
+        func=model.MT5.masking_func(),
+        max_masks=1,
+    )
+    batch_mask_func = batching.batch_func(mask_func)
     transf = transform.MaskAndFill(
-        mask=m,
+        mask=batch_mask_func,
         fill=mT5,
         num_samples=1,
         critical_field=_SWAP_NUM_CMD,
@@ -147,13 +155,15 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
         if not model.StanzaNER.is_lang_available(lang):
             processed.append(dataset)
             continue
-        m = mask.NamedEntity(
+        mask_func = functools.partial(
+            mask.mask_named_entities,
             model=model.StanzaNER(lang=lang, use_gpu=gpu),
-            pattern=model.MT5.masking_pattern(),
+            func=model.MT5.masking_func(),
             max_masks=1,
         )
+        batch_mask_func = batching.batch_func(mask_func)
         transf = transform.MaskAndFill(
-            mask=m,
+            mask=batch_mask_func,
             fill=mT5,
             num_samples=1,
             critical_field=_SWAP_NE_CMD,
@@ -341,9 +351,15 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
     gpu = accelerator.use_gpu(no_gpu)
 
     mT5 = model.MT5(cuda=gpu)
-    m = mask.RandomInsert(model.MT5.masking_pattern(), p=prob, max_masks=max_masks)
+    mask_func = functools.partial(
+        mask.mask_random_insert,
+        func=model.MT5.masking_func(),
+        p=prob,
+        max_masks=max_masks,
+    )
+    batch_mask_func = batching.batch_func(mask_func)
     transf = transform.MaskAndFill(
-        mask=m,
+        mask=batch_mask_func,
         fill=mT5,
         num_samples=1,
         critical_field=_INS_TEXT_CMD,
