@@ -5,7 +5,6 @@ import numpy as np
 import re
 
 from smaug import _itertools
-from smaug import model
 from smaug import random
 
 from typing import Callable, Iterable, List, Optional, Tuple
@@ -161,28 +160,26 @@ def mask_intervals(sentence: str, intervals: MaskingIntervals, func: MaskFunctio
 
 def mask_named_entities(
     text: str,
-    model: model.StanzaNER,
-    func: MaskFunction,
-    entities: Optional[Iterable[str]] = None,
+    ner_func: Callable,
+    mask_func: MaskFunction,
+    filter_entities: Optional[Iterable[str]] = None,
     p: float = 1,
     max_masks: Optional[int] = None,
 ) -> str:
     if p == 0:
         return text
 
-    if entities is None:
-        entities = model.tags
-
-    entities = set(entities)
-    for e in entities:
-        if e not in model.tags:
-            raise ValueError(f"Unknown entity type: {e}")
+    # No filter
+    filter_entities_func = lambda ent: True
+    if filter_entities is not None:
+        unique_entities = set(filter_entities)
+        filter_entities_func = lambda ent: ent.type in unique_entities
 
     rng = random.numpy_seeded_rng()
 
-    text_w_ner = model(text)
+    text_w_ner = ner_func(text)
 
-    detected_entities = filter(lambda ent: ent.type in entities, text_w_ner.entities)
+    detected_entities = filter(filter_entities_func, text_w_ner.entities)
     if p != 1:
         detected_entities = filter(lambda _: rng.random() <= p, detected_entities)
 
@@ -194,7 +191,7 @@ def mask_named_entities(
     intervals_iter = (
         MaskingInterval(ent.start_char, ent.end_char) for ent in detected_entities
     )
-    return mask_intervals(text, MaskingIntervals(*intervals_iter), func)
+    return mask_intervals(text, MaskingIntervals(*intervals_iter), mask_func)
 
 
 _DEFAULT_NUMBERS_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")

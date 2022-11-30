@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-from smaug import model
 from smaug import pipeline
 from smaug.transform import base
 from smaug.transform import error
@@ -29,7 +28,7 @@ class MaskAndFill(base.Transform):
     def __init__(
         self,
         mask,
-        fill: model.MaskedLanguageModel,
+        fill,
         num_samples: int = 1,
         critical_field: Optional[str] = None,
     ):
