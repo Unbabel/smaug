@@ -5,27 +5,11 @@ import transformers
 
 from typing import List, Tuple
 
-from smaug import _itertools
 from smaug.model import base
-from smaug.model.typing import MaskingPattern
 from smaug.typing import Text
 
 
 _MASK_REGEX = re.compile(r"<extra_id_\d{1,2}>")
-
-
-class _MT5MaskFunction(_itertools.ResetableIterator):
-    def __init__(self) -> None:
-        super().__init__()
-        self.__counter = 0
-
-    def __next__(self):
-        mask = f"<extra_id_{self.__counter}>"
-        self.__counter += 1
-        return mask
-
-    def reset(self):
-        self.__counter = 0
 
 
 class MT5(base.Text2Text, base.MaskedLanguageModel):
@@ -53,8 +37,8 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
         self._cuda = cuda
 
     @classmethod
-    def masking_pattern(cls) -> MaskingPattern:
-        return _MT5MaskFunction()
+    def masking_func(cls) -> base.MaskFunction:
+        return lambda idx: f"<extra_id_{idx}>"
 
     @functools.singledispatchmethod
     def __call__(self, text: Text) -> base.MaskedLanguageModelOutput:
@@ -102,13 +86,15 @@ class MT5(base.Text2Text, base.MaskedLanguageModel):
     def replace_masks(self, source, output):
         spans = _MASK_REGEX.split(output)[1:]
 
-        masking_pattern = self.masking_pattern()
+        masking_func = self.masking_func()
         generated_spans = []
+        mask_idx = 0
         for span in spans:
             # Avoid bad escape char by replacing single \ with \\
             escaped_span = span.strip().replace("\\", "\\\\")
 
-            mask = next(masking_pattern)
+            mask = masking_func(mask_idx)
+            mask_idx += 1
 
             pattern_match = re.search(mask, source)
             if pattern_match:
