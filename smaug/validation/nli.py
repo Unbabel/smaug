@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from smaug import model
+from smaug import nli
 from smaug import pipeline
 from smaug.validation import base
 
@@ -15,7 +15,7 @@ class IsContradiction(base.Validation):
 
     def __init__(
         self,
-        roberta: model.RobertaMNLI,
+        roberta,
         critical_field: Optional[str] = None,
     ) -> None:
         super().__init__(critical_field=critical_field)
@@ -28,6 +28,6 @@ class IsContradiction(base.Validation):
             nli_input = f"{r.original} </s></s> {r.perturbations[self.critical_field]}"
             logits = self.__roberta(nli_input)
             predicted_id = logits.argmax().item()
-            if predicted_id != self.__roberta.contradiction_id:
+            if predicted_id != nli.roberta_mnli_contradiction_id():
                 base.del_perturbation(self.critical_field, r)
         return records
