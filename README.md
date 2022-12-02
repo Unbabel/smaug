@@ -4,6 +4,12 @@
 
 # Getting Started
 
+To start using `smaug`, you can install it with `pip`:
+
+```
+pip install unbabel-smaug
+```
+
 To run a simple pipeline with all transforms and default validations, first create the following `yaml` file:
 
 ```yaml
@@ -82,9 +88,9 @@ You can further have multiple languages in a given file by having each line with
 augment io-read-csv -p <input_file> <transf_name_1> <transf_name_2> ... io-write-json -p <output_file>
 ```
 
-# Install
+# Developing
 
-To install this package, execute the following steps:
+To develop this package, execute the following steps:
 
 * Install the [poetry](https://python-poetry.org/docs/#installation) tool for dependency management.
 
