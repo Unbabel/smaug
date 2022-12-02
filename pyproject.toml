@@ -1,8 +1,28 @@
 [tool.poetry]
-name = "smaug"
-version = "0.1.0"
-description = ""
-authors = ["DuarteMRAlves <duartemalves@tecnico.ulisboa.pt>"]
+name = "unbabel-smaug"
+version = "0.1.1"
+description = "Sentence-level Multilingual Augmentation"
+license = "Apache-2.0"
+authors = ["Duarte Alves <duartemalves@tecnico.ulisboa.pt>"]
+readme = "README.md"
+repository = "https://github.com/Unbabel/smaug"
+keywords = [
+    "Natural Language Processing",
+    "Data Augmentation"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+packages = [
+    { include = "smaug" },
+]
+include = [
+    "README.md",
+    "LICENSE.md",
+]
 
 [tool.poetry.scripts]
 augment = "smaug.cli:augment"
