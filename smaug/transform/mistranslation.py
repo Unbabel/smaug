@@ -2,9 +2,9 @@ import abc
 import io
 import numpy as np
 
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Callable, Dict, Iterable, List, Optional, Set
 
-from smaug import model
+from smaug import ner
 from smaug import pipeline
 from smaug import random
 from smaug.transform import base
@@ -45,7 +45,7 @@ class NamedEntityShuffle(Mistranslation):
         critical_field: Field to add inside the perturbations dictionary.
     """
 
-    __ner: model.StanzaNER
+    __ner: Callable
     __entities: Set[str]
 
     __NAME = "named-entity-shuffle"
@@ -100,20 +100,20 @@ class NamedEntityShuffle(Mistranslation):
     def __init__(
         self,
         lang: str,
-        model: model.StanzaNER,
+        ner_func: Callable,
         entities: Optional[Iterable[str]] = None,
         critical_field: Optional[str] = None,
     ):
         super().__init__(name=self.__NAME, critical_field=critical_field)
 
         if entities is None:
-            entities = self.__DEFAULT_TAGS[lang]
+            entities = ner.stanza_ner_tags(lang)
         entities = set(entities)
         for e in entities:
-            if e not in model.tags:
+            if e not in ner.stanza_ner_tags(lang):
                 raise ValueError(f"Unknown entity type: {e}")
 
-        self.__ner = model
+        self.__ner = ner_func
         self.__entities = entities
         self.__rng = random.numpy_seeded_rng()
 
@@ -197,7 +197,7 @@ class Negation(Mistranslation):
 
     def __init__(
         self,
-        neg_polyjuice: model.NegPolyjuice,
+        neg_polyjuice,
         num_samples: int = 1,
         critical_field: Optional[str] = None,
     ):

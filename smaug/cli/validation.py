@@ -1,6 +1,8 @@
 import click
+import functools
 
-from smaug import model
+from smaug import ner
+from smaug import nli
 from smaug import validation
 from smaug.cli import accelerator
 from smaug.cli import fmt
@@ -130,7 +132,7 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
 
     gpu = accelerator.use_gpu(no_gpu)
 
-    roberta = model.RobertaMNLI(cuda=gpu)
+    roberta = functools.partial(nli.roberta_mnli_predict, cuda=gpu)
 
     processed = [dataset for dataset in datasets]
     for transform in transforms:
@@ -217,7 +219,7 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
     total_records = sum(
         len(dataset["records"])
         for dataset in datasets
-        if model.StanzaNER.is_lang_available(dataset["lang"])
+        if ner.stanza_ner_lang_available(dataset["lang"])
     )
     if total_records == 0:
         click.echo(fmt.no_records_message("Keep Equal Named Entities Count"))
@@ -232,10 +234,11 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
         )
         for dataset in processed:
             lang = dataset["lang"]
-            if not model.StanzaNER.is_lang_available(lang):
+            if not ner.stanza_ner_lang_available(lang):
                 continue
+            ner_func = functools.partial(ner.stanza_ner, lang=lang, use_gpu=gpu)
             val = validation.EqualNamedEntityCount(
-                ner_model=model.StanzaNER(lang=lang, use_gpu=gpu),
+                ner_func=ner_func,
                 critical_field=transform,
             )
             not_validated = dataset["records"]

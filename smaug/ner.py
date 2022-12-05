@@ -8,11 +8,9 @@ import dataclasses
 import functools
 import logging
 import stanza
-import typing
 
 from packaging import version
-from smaug.model import base
-from smaug.typing import Text
+
 from typing import Tuple
 
 
@@ -210,65 +208,28 @@ _STANZA_NER_MODEL_INFO = {
 _AVAILABLE_STANZA_VERSION = version.Version(stanza.__version__)
 
 
-class StanzaNER(base.TokenClassification):
-    """Stanza model for named entity recognition.
+def stanza_ner_tags(lang: str):
+    return _STANZA_NER_MODEL_INFO[lang].tags
 
-    This model supports multiple languages, each with its set of tags. The
-    used tags and available (language, tags) pairs are described in
-    https://stanfordnlp.github.io/stanza/available_models.html#available-ner-models.
 
-    When a language is specified, the default model for that language is loaded.
+def stanza_ner_lang_available(lang: str) -> bool:
+    if lang not in _STANZA_NER_MODEL_INFO:
+        return False
+    model_info = _STANZA_NER_MODEL_INFO[lang]
+    if model_info.req_stanza_version > _AVAILABLE_STANZA_VERSION:
+        logging.warn(
+            'Required Stanza version for language "%s" is "%s" but found "%s".',
+            lang,
+            model_info.req_stanza_version,
+            _AVAILABLE_STANZA_VERSION,
+        )
+        return False
+    return True
 
-    Args:
-        use_gpu: Specifies if a gpu should be used if available.
-    """
 
-    def __init__(self, lang: str = "en", use_gpu: bool = False):
-        self.__nlp = self.__load_pipeline(lang, use_gpu=use_gpu)
-        self.__tags = _STANZA_NER_MODEL_INFO[lang].tags
-
-    @property
-    def tags(self):
-        return self.__tags
-
-    @functools.singledispatchmethod
-    def __call__(self, text: Text) -> typing.Any:
-        """Performs named entity recognition on the received documents.
-
-        Args:
-            text: Sentences to process.
-
-        Returns:
-            Documents with the identified named entities.
-        """
-        pass
-
-    @__call__.register
-    def _(self, text: str):
-        return self.__nlp(text)
-
-    @__call__.register
-    def _(self, text: list):
-        return [self.__nlp(t) for t in text]
-
-    @staticmethod
-    def is_lang_available(lang: str):
-        if lang not in _STANZA_NER_MODEL_INFO:
-            return False
-        model_info = _STANZA_NER_MODEL_INFO[lang]
-        if model_info.req_stanza_version > _AVAILABLE_STANZA_VERSION:
-            logging.warn(
-                'Required Stanza version for language "%s" is "%s" but found "%s".',
-                lang,
-                model_info.req_stanza_version,
-                _AVAILABLE_STANZA_VERSION,
-            )
-            return False
-        return True
-
-    @staticmethod
+def stanza_ner(text: str, lang: str = "en", use_gpu: bool = False):
     @functools.lru_cache(maxsize=1)
-    def __load_pipeline(lang, use_gpu):
+    def load_stanza_ner_pipeline(lang, use_gpu):
         """Loads a new pipeline for a given language.
 
         The pipelines are cached for subsequent loads.
@@ -286,3 +247,6 @@ class StanzaNER(base.TokenClassification):
         processors = "tokenize,ner"
         stanza.download(lang, processors=processors, logging_level="WARN")
         return stanza.Pipeline(lang, processors=processors, use_gpu=use_gpu)
+
+    nlp = load_stanza_ner_pipeline(lang, use_gpu=use_gpu)
+    return nlp(text)

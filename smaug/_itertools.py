@@ -2,9 +2,6 @@ import itertools
 import typing
 
 
-from collections import abc
-
-
 def take(iterable: typing.Iterable, n: int) -> typing.List:
     """Return first n items of the iterable as a list.
 
@@ -23,11 +20,23 @@ def repeat_items(iterable: typing.Iterable, n: int) -> typing.Iterable:
     return itertools.chain.from_iterable(repeated_iterables)
 
 
-class ResetableIterator(abc.Iterator):
-    """Specifies an iterator that can be reset.
+def unique_everseen(iterable, key=None):
+    """List unique elements, preserving order. Remember all elements ever seen.
 
-    When the iterator is reset, it should go back to the first element.
+    unique_everseen('AAAABBBCCDAABBB') --> A B C D
+    unique_everseen('ABBCcAD', str.lower) --> A B C D
+
+    Based on the method in itertools recipes in
+    https://docs.python.org/3/library/itertools.html
     """
 
-    def reset():
-        ...
+    seen = set()
+
+    if key is None:
+        key = lambda x: x
+
+    for element in iterable:
+        k = key(element)
+        if k not in seen:
+            seen.add(k)
+            yield element

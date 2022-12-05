@@ -1,7 +1,5 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from smaug import mask
-from smaug import model
 from smaug import pipeline
 from smaug.transform import base
 from smaug.transform import error
@@ -26,19 +24,17 @@ class MaskAndFill(base.Transform):
     """
 
     __NAME = "mask-and-fill"
-    __MISTRANSLATION_MASKS = (mask.RandomReplace, mask.NamedEntity)
-    __HALLUCINATION_MASKS = (mask.RandomInsert,)
 
     def __init__(
         self,
-        mask: mask.Mask,
-        fill: model.MaskedLanguageModel,
+        mask,
+        fill,
         num_samples: int = 1,
         critical_field: Optional[str] = None,
     ):
         super().__init__(
             name=self.__NAME,
-            error_type=self.__get_type(mask),
+            error_type=error.ErrorType.UNDEFINED,
             critical_field=critical_field,
         )
         self.__masking = mask
@@ -61,10 +57,3 @@ class MaskAndFill(base.Transform):
             orig.metadata[self.critical_field] = s
 
         return repeated_items
-
-    def __get_type(self, masking) -> error.ErrorType:
-        if isinstance(masking, self.__MISTRANSLATION_MASKS):
-            return error.ErrorType.MISTRANSLATION
-        elif isinstance(masking, self.__HALLUCINATION_MASKS):
-            return error.ErrorType.HALLUCINATION
-        return error.ErrorType.UNDEFINED
