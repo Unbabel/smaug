@@ -1,8 +1,8 @@
 import click
 import functools
 
-from smaug import ner
-from smaug import nli
+from smaug.ops import ner
+from smaug.ops import nli
 from smaug import validation
 from smaug.cli import accelerator
 from smaug.cli import fmt

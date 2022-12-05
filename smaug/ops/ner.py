@@ -13,6 +13,8 @@ from packaging import version
 
 from typing import Tuple
 
+from smaug import core
+
 
 @dataclasses.dataclass
 class _StanzaNERModelInfo:
@@ -227,7 +229,9 @@ def stanza_ner_lang_available(lang: str) -> bool:
     return True
 
 
-def stanza_ner(text: str, lang: str = "en", use_gpu: bool = False):
+def stanza_ner(
+    text: core.DataLike[str], lang: str = "en", use_gpu: bool = False
+) -> core.Data:
     @functools.lru_cache(maxsize=1)
     def load_stanza_ner_pipeline(lang, use_gpu):
         """Loads a new pipeline for a given language.
@@ -248,5 +252,6 @@ def stanza_ner(text: str, lang: str = "en", use_gpu: bool = False):
         stanza.download(lang, processors=processors, logging_level="WARN")
         return stanza.Pipeline(lang, processors=processors, use_gpu=use_gpu)
 
+    text = core.promote_to_data(text)
     nlp = load_stanza_ner_pipeline(lang, use_gpu=use_gpu)
-    return nlp(text)
+    return core.Data(nlp(t) for t in text)

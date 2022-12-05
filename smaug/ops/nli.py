@@ -2,16 +2,25 @@ import functools
 import torch
 import transformers
 
-from typing import List
+from smaug import core
 
 
-def roberta_mnli_predict(text: List[str], cuda: bool = False) -> torch.FloatTensor:
+def roberta_mnli_predict(
+    text: core.DataLike[str], cuda: bool = False
+) -> torch.FloatTensor:
+    text = core.promote_to_data(text)
+
     model, tokenizer = _roberta_mnli_load()
     if cuda:
         model.cuda()
     with torch.no_grad():
+        tokenizer_input = [el for el in text]
         input_ids = tokenizer(
-            text, padding=True, return_tensors="pt", truncation=True, max_length=512
+            tokenizer_input,
+            padding=True,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
         ).input_ids
         if cuda:
             input_ids = input_ids.cuda()

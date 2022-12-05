@@ -6,6 +6,8 @@ import transformers
 
 from typing import List, Tuple
 
+from smaug import core
+
 
 _MASK_REGEX = re.compile(r"<extra_id_\d{1,2}>")
 
@@ -16,12 +18,12 @@ GeneratedSpans = List[GeneratedSpan]
 @dataclasses.dataclass
 class MaskedLanguageModelOutput:
 
-    text: List[str]
-    spans: List[GeneratedSpans]
+    text: core.Data[str]
+    spans: core.Data[GeneratedSpans]
 
 
 def mT5_generate(
-    text: List[str],
+    text: core.DataLike[str],
     clean_outputs: bool = True,
     cuda: bool = False,
 ) -> MaskedLanguageModelOutput:
@@ -34,11 +36,14 @@ def mT5_generate(
         cuda: Whether to use cuda enabled gpu or not.
     """
 
+    text = core.promote_to_data(text)
+
     model, tokenizer = _mT5_load()
     if cuda:
         model.cuda()
 
-    input_ids = tokenizer(text, padding=True, return_tensors="pt").input_ids
+    tokenizer_input = [el for el in text]
+    input_ids = tokenizer(tokenizer_input, padding=True, return_tensors="pt").input_ids
     if cuda:
         input_ids = input_ids.cuda()
 
@@ -55,8 +60,8 @@ def mT5_generate(
     if clean_outputs:
         outputs = [_mT5_clean_output(o, spans) for o, spans in (outputs)]
 
-    texts = [x[0] for x in outputs]
-    spans = [x[1] for x in outputs]
+    texts = core.Data(x[0] for x in outputs)
+    spans = core.Data(x[1] for x in outputs)
 
     return MaskedLanguageModelOutput(text=texts, spans=spans)
 

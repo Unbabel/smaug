@@ -3,10 +3,11 @@ import typing
 import torch
 import transformers
 
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
-from smaug import pos_tagging
+from smaug import core
 from smaug import random
+from smaug.ops import pos_tagging
 
 
 _PERTURB_TOK = "<|perturb|>"
@@ -19,7 +20,9 @@ _EOF_TOKEN = "<|endoftext|>"
 _NEGATION = "[negation]"
 
 
-def polyjuice_negate(text: List[str], cuda: bool = False) -> List[Optional[str]]:
+def polyjuice_negate(
+    text: core.DataLike[str], cuda: bool = False
+) -> core.Data[Optional[str]]:
     """Polyjuice model conditioned on negation.
 
     This model wraps the Polyjuice model presented in the paper
@@ -40,6 +43,8 @@ def polyjuice_negate(text: List[str], cuda: bool = False) -> List[Optional[str]]
     Returns:
         Negated sentences
     """
+    text = core.promote_to_data(text)
+
     model, tokenizer = _load_polyjuice()
     if cuda:
         model.cuda()
@@ -79,15 +84,15 @@ def polyjuice_negate(text: List[str], cuda: bool = False) -> List[Optional[str]]
     # sentence.
     results = (_extract_results(o) for o in outputs)
 
-    return [
+    return core.Data(
         # Replace prompt with result if prompt existed
         next(results) if p is not None else None
         for _, p in sentences_with_prompts
-    ]
+    )
 
 
 def _add_negation_prompt(rng, doc: str) -> Optional[str]:
-    tagged = pos_tagging.stanza_pos_predict(doc)
+    tagged = pos_tagging.stanza_pos_predict(doc).item()
     possible_mask_intervals = []
     for sentence in tagged.sentences:
         for i, _ in enumerate(sentence.words):
