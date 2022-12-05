@@ -1,3 +1,4 @@
+import numpy as np
 import re
 import typing
 import torch
@@ -6,7 +7,6 @@ import transformers
 from typing import Optional, Tuple
 
 from smaug import core
-from smaug import random
 from smaug.ops import pos_tagging
 
 
@@ -21,7 +21,7 @@ _NEGATION = "[negation]"
 
 
 def polyjuice_negate(
-    text: core.DataLike[str], cuda: bool = False
+    text: core.DataLike[str], rng: np.random.Generator, cuda: bool = False
 ) -> core.Data[Optional[str]]:
     """Polyjuice model conditioned on negation.
 
@@ -48,8 +48,6 @@ def polyjuice_negate(
     model, tokenizer = _load_polyjuice()
     if cuda:
         model.cuda()
-
-    rng = random.numpy_seeded_rng()
 
     sentences_with_prompts = [(s, _add_negation_prompt(rng, s)) for s in text]
     prompts = [p for _, p in sentences_with_prompts if p is not None]

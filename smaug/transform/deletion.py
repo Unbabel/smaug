@@ -7,7 +7,6 @@ import re
 from typing import List, Optional
 
 from smaug import pipeline
-from smaug import random
 from smaug.transform import base
 from smaug.transform import error
 from smaug._itertools import repeat_items
@@ -64,6 +63,7 @@ class RandomDelete(Deletion):
 
     def __init__(
         self,
+        rng: np.random.Generator,
         num_samples: int = 1,
         p: float = 0.2,
         critical_field: Optional[str] = None,
@@ -74,7 +74,7 @@ class RandomDelete(Deletion):
             num_samples=num_samples,
         )
         self.__p = 1 - p
-        self.__rng = random.numpy_seeded_rng()
+        self.__rng = rng
 
     def _transform(self, sentence: str) -> str:
         splits = sentence.split()
@@ -87,6 +87,7 @@ class SpanDelete(Deletion):
 
     def __init__(
         self,
+        rng: np.random.Generator,
         min_size: float = 0.25,
         num_samples: int = 1,
         critical_field: Optional[str] = None,
@@ -97,7 +98,7 @@ class SpanDelete(Deletion):
             critical_field=critical_field,
         )
         self.__min_size = min_size
-        self.__rng = random.numpy_seeded_rng()
+        self.__rng = rng
 
     def _transform(self, sentence: str) -> str:
         splits = sentence.split()
@@ -139,6 +140,7 @@ class PunctSpanDelete(Deletion):
 
     def __init__(
         self,
+        rng: np.random.Generator,
         punct: str = ".,!?",
         low: int = 4,
         high: int = 10,
@@ -153,7 +155,7 @@ class PunctSpanDelete(Deletion):
         self.__punct = re.compile(f"[{punct}]+")
         self.__low = low
         self.__high = high
-        self.__rng = random.numpy_seeded_rng()
+        self.__rng = rng
 
     def _transform(self, sentence: str) -> Optional[str]:
         spans = self.__punct.split(sentence)
