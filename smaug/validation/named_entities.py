@@ -1,5 +1,6 @@
 from typing import Callable, Optional
 
+from smaug import core
 from smaug.validation import base
 
 
@@ -15,7 +16,7 @@ class EqualNamedEntityCount(base.CmpBased):
 
     def __init__(
         self,
-        ner_func: Callable,
+        ner_func: Callable[[core.DataLike[str]], core.Data],
         critical_field: Optional[str] = None,
     ):
         super().__init__(critical_field=critical_field)
@@ -26,6 +27,6 @@ class EqualNamedEntityCount(base.CmpBased):
         original: str,
         critical: str,
     ) -> bool:
-        orig_entity_count = len(self.__ner_func(original).entities)
-        crit_entity_count = len(self.__ner_func(critical).entities)
+        orig_entity_count = len(self.__ner_func(original).item().entities)
+        crit_entity_count = len(self.__ner_func(critical).item().entities)
         return orig_entity_count == crit_entity_count

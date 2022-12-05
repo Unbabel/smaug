@@ -1,7 +1,7 @@
 from typing import List, Optional
 
-from smaug import nli
 from smaug import pipeline
+from smaug.ops import nli
 from smaug.validation import base
 
 

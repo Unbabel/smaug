@@ -4,9 +4,10 @@ import numpy as np
 
 from typing import Callable, Dict, Iterable, List, Optional, Set
 
-from smaug import ner
+from smaug import core
 from smaug import pipeline
 from smaug import random
+from smaug.ops import ner
 from smaug.transform import base
 from smaug.transform import error
 from smaug._itertools import repeat_items
@@ -100,7 +101,7 @@ class NamedEntityShuffle(Mistranslation):
     def __init__(
         self,
         lang: str,
-        ner_func: Callable,
+        ner_func: Callable[[core.DataLike[str]], core.Data],
         entities: Optional[Iterable[str]] = None,
         critical_field: Optional[str] = None,
     ):
@@ -140,7 +141,7 @@ class NamedEntityShuffle(Mistranslation):
         return current
 
     def __shuffle_single_entity_type(self, sentence, entity):
-        entities = self.__ner(sentence).entities
+        entities = self.__ner(sentence).item().entities
         # If less than two entities were detected all subsequent calls will
         # not lead to shuffling, and we should stop trying.
         if len(entities) < 2:

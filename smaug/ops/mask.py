@@ -1,10 +1,12 @@
 import dataclasses
+import functools
 import io
 import itertools
 import numpy as np
 import re
 
 from smaug import _itertools
+from smaug import core
 from smaug import random
 
 from typing import Callable, Iterable, List, Optional, Tuple
@@ -106,22 +108,42 @@ class MaskingIntervals:
         return len(self._intervals)
 
 
-def mask_intervals(sentence: str, intervals: MaskingIntervals, func: MaskFunction):
+def mask_intervals(
+    text: core.DataLike[str],
+    intervals: core.DataLike[MaskingIntervals],
+    func: MaskFunction,
+) -> core.Data[str]:
     """Masks a sentence according to intervals.
 
     Mask the given sentence according to the specified intervals. The characters
     in the specified intervals are replaced by the mask token.
 
     Args:
-        sentence: sentence to mask.
-        intervals: intervals to mask. Each interval should specify this
-            start:end to index the sentence.
-        func: masking function to mask the intervals.
+        text (core.DataLike[str]): text to mask.
+        intervals (MaskingIntervals): intervals to mask. Each interval
+            should specify the start:end to index the sentence.
+        func (MaskFunction): masking function to mask the intervals.
 
     Returns:
-        A masked document or a list of masked documents according to the given
-        intervals.
+        core.Data[str]: Masked text according to the given intervals.
     """
+
+    text = core.promote_to_data(text)
+    intervals = core.promote_to_data(intervals)
+
+    text, intervals = core.broadcast_data(text, intervals)
+
+    return core.Data(
+        _mask_sentence_intervals(t, i, func) for t, i in zip(text, intervals)
+    )
+
+
+def _mask_sentence_intervals(
+    sentence: str,
+    intervals: MaskingIntervals,
+    func: MaskFunction,
+) -> str:
+
     if len(intervals) == 0:
         return sentence
 
@@ -159,8 +181,42 @@ def mask_intervals(sentence: str, intervals: MaskingIntervals, func: MaskFunctio
 
 
 def mask_named_entities(
+    text: core.DataLike[str],
+    ner_func: Callable[[core.DataLike[str]], core.Data],
+    mask_func: MaskFunction,
+    filter_entities: Optional[Iterable[str]] = None,
+    p: float = 1,
+    max_masks: Optional[int] = None,
+) -> core.Data[str]:
+    """Masks the named entities in a given text.
+
+    Args:
+        text (core.DataLike[str]): text to apply the masks.
+        ner_func (Callable[[core.DataLike[str]], core.Data]): function to detect named entities.
+        mask_func (MaskFunction): masking function to apply.
+        filter_entities (Optional[Iterable[str]]): named entity tags to consider.
+        p (float): probability of applying a mask to a given named entity.
+        max_masks (Optional[int]): maximum masks to apply.
+            If not specified all regular expression matches will be masked.
+
+    Returns:
+        core.Data[str]: masked text.
+    """
+    text = core.promote_to_data(text)
+    mask_sentence_func = functools.partial(
+        _mask_sentence_named_entities,
+        ner_func=ner_func,
+        mask_func=mask_func,
+        filter_entities=filter_entities,
+        p=p,
+        max_masks=max_masks,
+    )
+    return core.Data(mask_sentence_func(t) for t in text)
+
+
+def _mask_sentence_named_entities(
     text: str,
-    ner_func: Callable,
+    ner_func: Callable[[core.DataLike[str]], core.Data],
     mask_func: MaskFunction,
     filter_entities: Optional[Iterable[str]] = None,
     p: float = 1,
@@ -177,7 +233,7 @@ def mask_named_entities(
 
     rng = random.numpy_seeded_rng()
 
-    text_w_ner = ner_func(text)
+    text_w_ner = ner_func(text).item()
 
     detected_entities = filter(filter_entities_func, text_w_ner.entities)
     if p != 1:
@@ -191,29 +247,98 @@ def mask_named_entities(
     intervals_iter = (
         MaskingInterval(ent.start_char, ent.end_char) for ent in detected_entities
     )
-    return mask_intervals(text, MaskingIntervals(*intervals_iter), mask_func)
+    return mask_intervals(text, MaskingIntervals(*intervals_iter), mask_func).item()
 
 
 _DEFAULT_NUMBERS_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")
 
 
 def mask_numbers(
+    text: core.DataLike[str],
+    func: MaskFunction,
+    max_masks: Optional[int] = None,
+) -> core.Data[str]:
+    """Masks the numbers in a given sentence according to regular expressions.
+
+    Args:
+        text (core.DataLike[str]): text to apply the masks.
+        func (MaskFunction): masking function to apply.
+        max_masks (Optional[int]): maximum masks to apply.
+            If not specified all regular expression matches will be masked.
+
+    Returns:
+        core.Data[str]: masked text.
+    """
+    return mask_regex(text, func, _DEFAULT_NUMBERS_REGEX, max_masks)
+
+
+def mask_regex(
+    text: core.DataLike[str],
+    func: MaskFunction,
+    regex: re.Pattern,
+    max_masks: Optional[int] = None,
+) -> core.Data[str]:
+    """Masks text spans that match a given regular expression.
+
+    Args:
+        text (core.DataLike[str]): text to apply the masks.
+        func (MaskFunction): masking function to apply.
+        regex (re.Pattern): regular expression to match.
+        max_masks (Optional[int]): maximum masks to apply.
+            If not specified all regular expression matches will be masked.
+
+    Returns:
+        core.Data[str]: masked text.
+    """
+    text = core.promote_to_data(text)
+    mask_sentence_func = functools.partial(
+        _mask_sentence_regex,
+        func=func,
+        regex=regex,
+        max_masks=max_masks,
+    )
+    return core.Data(mask_sentence_func(t) for t in text)
+
+
+def _mask_sentence_regex(
     text: str,
     func: MaskFunction,
-    regex: re.Pattern = _DEFAULT_NUMBERS_REGEX,
+    regex: re.Pattern,
     max_masks: Optional[int] = None,
 ) -> str:
-    rng = random.numpy_seeded_rng()
     matches = regex.finditer(text)
     if max_masks:
         matches = list(matches)
         if len(matches) > max_masks:
+            rng = random.numpy_seeded_rng()
             matches = rng.choice(matches, max_masks, replace=False)
     intervals_iter = (MaskingInterval(*m.span()) for m in matches)
-    return mask_intervals(text, MaskingIntervals(*intervals_iter), func)
+    return mask_intervals(text, MaskingIntervals(*intervals_iter), func).item()
 
 
-def mask_random_replace(text: str, func: MaskFunction, p: float = 1) -> str:
+def mask_random_replace(
+    text: core.DataLike[str], func: MaskFunction, p: float = 1
+) -> core.Data[str]:
+    """Randomly replaces words for masks.
+
+    Args:
+        text (core.DataLike[str]): text to apply the masks.
+        func (MaskFunction): masking function to apply.
+        p (float): probability of replacing a word by a mask.
+
+    Returns:
+        core.Data[str]: masked text.
+    """
+    text = core.promote_to_data(text)
+    mask_sentence_func = functools.partial(
+        _mask_sentence_random_replace,
+        func=func,
+        p=p,
+    )
+    return core.Data(mask_sentence_func(t) for t in text)
+
+
+def _mask_sentence_random_replace(text: str, func: MaskFunction, p: float = 1) -> str:
     rng = random.numpy_seeded_rng()
     splits = text.split()
     mask = rng.choice([False, True], size=len(splits), p=(1 - p, p))
@@ -223,6 +348,34 @@ def mask_random_replace(text: str, func: MaskFunction, p: float = 1) -> str:
 
 
 def mask_random_insert(
+    text: core.DataLike[str],
+    func: MaskFunction,
+    p: float = 0.2,
+    max_masks: Optional[int] = None,
+) -> core.Data[str]:
+    """Inserts masks between random words in the text.
+
+    Args:
+        text (core.DataLike[str]): text to apply the masks.
+        func (MaskFunction): masking function to apply.
+        p (float): probability of inserting a mask between two words.
+        max_masks (Optional[int]): maximum masks to apply.
+            If not specified all regular expression matches will be masked.
+
+    Returns:
+        core.Data[str]: masked text.
+    """
+    text = core.promote_to_data(text)
+    mask_sentence_func = functools.partial(
+        _mask_sentence_random_insert,
+        func=func,
+        p=p,
+        max_masks=max_masks,
+    )
+    return core.Data(mask_sentence_func(t) for t in text)
+
+
+def _mask_sentence_random_insert(
     text: str,
     func: MaskFunction,
     p: float = 0.2,

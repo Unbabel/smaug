@@ -1,12 +1,11 @@
 import click
 import functools
 
-from smaug import batching
-from smaug import mask
-from smaug import lang_model
-from smaug import ner
-from smaug import text_generation
 from smaug import transform
+from smaug.ops import lang_model
+from smaug.ops import mask
+from smaug.ops import ner
+from smaug.ops import text_generation
 from smaug.cli import accelerator
 from smaug.cli import fmt
 from smaug.cli import processor
@@ -68,12 +67,11 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
         func=lang_model.mT5_masking_function,
         max_masks=1,
     )
-    batch_mask_func = batching.batch_func(mask_func)
 
     mT5_func = functools.partial(lang_model.mT5_generate, cuda=gpu)
 
     transf = transform.MaskAndFill(
-        mask=batch_mask_func,
+        mask=mask_func,
         fill=mT5_func,
         num_samples=1,
         critical_field=_SWAP_NUM_CMD,
@@ -163,10 +161,9 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             mask_func=lang_model.mT5_masking_function,
             max_masks=1,
         )
-        batch_mask_func = batching.batch_func(mask_func)
         mT5_func = functools.partial(lang_model.mT5_generate, cuda=gpu)
         transf = transform.MaskAndFill(
-            mask=batch_mask_func,
+            mask=mask_func,
             fill=mT5_func,
             num_samples=1,
             critical_field=_SWAP_NE_CMD,
@@ -359,11 +356,10 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
         p=prob,
         max_masks=max_masks,
     )
-    batch_mask_func = batching.batch_func(mask_func)
 
     mT5_func = functools.partial(lang_model.mT5_generate, cuda=gpu)
     transf = transform.MaskAndFill(
-        mask=batch_mask_func,
+        mask=mask_func,
         fill=mT5_func,
         num_samples=1,
         critical_field=_INS_TEXT_CMD,
