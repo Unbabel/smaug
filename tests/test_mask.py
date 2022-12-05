@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from smaug import core
@@ -65,7 +66,7 @@ def test_mask_intervals(docs, intervals, func, expected):
     ],
 )
 def test_number_mask(text, func, expected):
-    output = mask.mask_numbers(text, func)
+    output = mask.mask_numbers(text, func, np.random.default_rng())
     assert isinstance(output, core.Data)
     assert len(expected) == len(output)
     for e, p in zip(expected, output):
@@ -103,7 +104,7 @@ def test_number_mask_max(text, func, expected_opts):
             and all(e == p for e, p in zip(expected, output))
         )
 
-    output = mask.mask_numbers(text, func, max_masks=1)
+    output = mask.mask_numbers(text, func, np.random.default_rng(), max_masks=1)
     assert any(matches_func(e, output) for e in expected_opts)
 
 
@@ -123,7 +124,7 @@ def test_number_mask_max(text, func, expected_opts):
     ],
 )
 def test_random_replace_mask(text: str, func):
-    output = mask.mask_random_replace(text, func, p=0.5)
+    output = mask.mask_random_replace(text, func, np.random.default_rng(), p=0.5)
 
     t_splits = text.split()
     assert isinstance(output, core.Data)
@@ -155,7 +156,7 @@ def test_random_replace_mask(text: str, func):
     ],
 )
 def test_random_insert_mask(text, func):
-    output = mask.mask_random_insert(text, func, p=0.5)
+    output = mask.mask_random_insert(text, func, np.random.default_rng(), p=0.5)
 
     assert isinstance(output, core.Data)
     assert len(output) == 1

@@ -7,7 +7,6 @@ import re
 
 from smaug import _itertools
 from smaug import core
-from smaug import random
 
 from typing import Callable, Iterable, List, Optional, Tuple
 
@@ -184,6 +183,7 @@ def mask_named_entities(
     text: core.DataLike[str],
     ner_func: Callable[[core.DataLike[str]], core.Data],
     mask_func: MaskFunction,
+    rng: np.random.Generator,
     filter_entities: Optional[Iterable[str]] = None,
     p: float = 1,
     max_masks: Optional[int] = None,
@@ -194,6 +194,7 @@ def mask_named_entities(
         text (core.DataLike[str]): text to apply the masks.
         ner_func (Callable[[core.DataLike[str]], core.Data]): function to detect named entities.
         mask_func (MaskFunction): masking function to apply.
+        rng (np.random.Generator): numpy random generator to use.
         filter_entities (Optional[Iterable[str]]): named entity tags to consider.
         p (float): probability of applying a mask to a given named entity.
         max_masks (Optional[int]): maximum masks to apply.
@@ -207,6 +208,7 @@ def mask_named_entities(
         _mask_sentence_named_entities,
         ner_func=ner_func,
         mask_func=mask_func,
+        rng=rng,
         filter_entities=filter_entities,
         p=p,
         max_masks=max_masks,
@@ -218,6 +220,7 @@ def _mask_sentence_named_entities(
     text: str,
     ner_func: Callable[[core.DataLike[str]], core.Data],
     mask_func: MaskFunction,
+    rng: np.random.Generator,
     filter_entities: Optional[Iterable[str]] = None,
     p: float = 1,
     max_masks: Optional[int] = None,
@@ -230,8 +233,6 @@ def _mask_sentence_named_entities(
     if filter_entities is not None:
         unique_entities = set(filter_entities)
         filter_entities_func = lambda ent: ent.type in unique_entities
-
-    rng = random.numpy_seeded_rng()
 
     text_w_ner = ner_func(text).item()
 
@@ -256,6 +257,7 @@ _DEFAULT_NUMBERS_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")
 def mask_numbers(
     text: core.DataLike[str],
     func: MaskFunction,
+    rng: np.random.Generator,
     max_masks: Optional[int] = None,
 ) -> core.Data[str]:
     """Masks the numbers in a given sentence according to regular expressions.
@@ -263,19 +265,21 @@ def mask_numbers(
     Args:
         text (core.DataLike[str]): text to apply the masks.
         func (MaskFunction): masking function to apply.
+        rng (np.random.Generator): numpy random generator to use.
         max_masks (Optional[int]): maximum masks to apply.
             If not specified all regular expression matches will be masked.
 
     Returns:
         core.Data[str]: masked text.
     """
-    return mask_regex(text, func, _DEFAULT_NUMBERS_REGEX, max_masks)
+    return mask_regex(text, func, _DEFAULT_NUMBERS_REGEX, rng, max_masks)
 
 
 def mask_regex(
     text: core.DataLike[str],
     func: MaskFunction,
     regex: re.Pattern,
+    rng: np.random.Generator,
     max_masks: Optional[int] = None,
 ) -> core.Data[str]:
     """Masks text spans that match a given regular expression.
@@ -284,6 +288,7 @@ def mask_regex(
         text (core.DataLike[str]): text to apply the masks.
         func (MaskFunction): masking function to apply.
         regex (re.Pattern): regular expression to match.
+        rng (np.random.Generator): numpy random generator to use.
         max_masks (Optional[int]): maximum masks to apply.
             If not specified all regular expression matches will be masked.
 
@@ -295,6 +300,7 @@ def mask_regex(
         _mask_sentence_regex,
         func=func,
         regex=regex,
+        rng=rng,
         max_masks=max_masks,
     )
     return core.Data(mask_sentence_func(t) for t in text)
@@ -304,26 +310,27 @@ def _mask_sentence_regex(
     text: str,
     func: MaskFunction,
     regex: re.Pattern,
+    rng: np.random.Generator,
     max_masks: Optional[int] = None,
 ) -> str:
     matches = regex.finditer(text)
     if max_masks:
         matches = list(matches)
         if len(matches) > max_masks:
-            rng = random.numpy_seeded_rng()
             matches = rng.choice(matches, max_masks, replace=False)
     intervals_iter = (MaskingInterval(*m.span()) for m in matches)
     return mask_intervals(text, MaskingIntervals(*intervals_iter), func).item()
 
 
 def mask_random_replace(
-    text: core.DataLike[str], func: MaskFunction, p: float = 1
+    text: core.DataLike[str], func: MaskFunction, rng: np.random.Generator, p: float = 1
 ) -> core.Data[str]:
     """Randomly replaces words for masks.
 
     Args:
         text (core.DataLike[str]): text to apply the masks.
         func (MaskFunction): masking function to apply.
+        rng (np.random.Generator): numpy random generator to use.
         p (float): probability of replacing a word by a mask.
 
     Returns:
@@ -333,13 +340,15 @@ def mask_random_replace(
     mask_sentence_func = functools.partial(
         _mask_sentence_random_replace,
         func=func,
+        rng=rng,
         p=p,
     )
     return core.Data(mask_sentence_func(t) for t in text)
 
 
-def _mask_sentence_random_replace(text: str, func: MaskFunction, p: float = 1) -> str:
-    rng = random.numpy_seeded_rng()
+def _mask_sentence_random_replace(
+    text: str, func: MaskFunction, rng: np.random.Generator, p: float = 1
+) -> str:
     splits = text.split()
     mask = rng.choice([False, True], size=len(splits), p=(1 - p, p))
     mask_iter = (func(i) for i in itertools.count())
@@ -350,6 +359,7 @@ def _mask_sentence_random_replace(text: str, func: MaskFunction, p: float = 1) -
 def mask_random_insert(
     text: core.DataLike[str],
     func: MaskFunction,
+    rng: np.random.Generator,
     p: float = 0.2,
     max_masks: Optional[int] = None,
 ) -> core.Data[str]:
@@ -358,6 +368,7 @@ def mask_random_insert(
     Args:
         text (core.DataLike[str]): text to apply the masks.
         func (MaskFunction): masking function to apply.
+        rng (np.random.Generator): numpy random generator to use.
         p (float): probability of inserting a mask between two words.
         max_masks (Optional[int]): maximum masks to apply.
             If not specified all regular expression matches will be masked.
@@ -369,6 +380,7 @@ def mask_random_insert(
     mask_sentence_func = functools.partial(
         _mask_sentence_random_insert,
         func=func,
+        rng=rng,
         p=p,
         max_masks=max_masks,
     )
@@ -378,10 +390,10 @@ def mask_random_insert(
 def _mask_sentence_random_insert(
     text: str,
     func: MaskFunction,
+    rng: np.random.Generator,
     p: float = 0.2,
     max_masks: Optional[int] = None,
 ) -> str:
-    rng = random.numpy_seeded_rng()
 
     splits = text.split()
     # Not enought splits to insert mask.

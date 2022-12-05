@@ -6,7 +6,6 @@ from typing import Callable, Dict, Iterable, List, Optional, Set
 
 from smaug import core
 from smaug import pipeline
-from smaug import random
 from smaug.ops import ner
 from smaug.transform import base
 from smaug.transform import error
@@ -102,6 +101,7 @@ class NamedEntityShuffle(Mistranslation):
         self,
         lang: str,
         ner_func: Callable[[core.DataLike[str]], core.Data],
+        rng: np.random.Generator,
         entities: Optional[Iterable[str]] = None,
         critical_field: Optional[str] = None,
     ):
@@ -116,7 +116,7 @@ class NamedEntityShuffle(Mistranslation):
 
         self.__ner = ner_func
         self.__entities = entities
-        self.__rng = random.numpy_seeded_rng()
+        self.__rng = rng
 
     def __call__(self, original: List[pipeline.State]) -> List[pipeline.State]:
         for orig in original:

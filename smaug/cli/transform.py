@@ -1,6 +1,7 @@
 import click
 import functools
 
+from smaug import random
 from smaug import transform
 from smaug.ops import lang_model
 from smaug.ops import mask
@@ -62,9 +63,12 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 
     gpu = accelerator.use_gpu(no_gpu)
 
+    rng = random.numpy_seeded_rng()
+
     mask_func = functools.partial(
         mask.mask_numbers,
         func=lang_model.mT5_masking_function,
+        rng=rng,
         max_masks=1,
     )
 
@@ -145,6 +149,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
     ctx.obj.register_transform(_SWAP_NE_CMD)
 
     gpu = accelerator.use_gpu(no_gpu)
+    rng = random.numpy_seeded_rng()
 
     processed = []
 
@@ -159,6 +164,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             mask.mask_named_entities,
             ner_func=ner_func,
             mask_func=lang_model.mT5_masking_function,
+            rng=rng,
             max_masks=1,
         )
         mT5_func = functools.partial(lang_model.mT5_generate, cuda=gpu)
@@ -215,7 +221,10 @@ def negate(ctx, datasets, batch_size, no_gpu):
 
     gpu = accelerator.use_gpu(no_gpu)
 
-    neg_polyjuice = functools.partial(text_generation.polyjuice_negate, cuda=gpu)
+    rng = random.numpy_seeded_rng()
+    neg_polyjuice = functools.partial(
+        text_generation.polyjuice_negate, rng=rng, cuda=gpu
+    )
     transf = transform.Negation(
         neg_polyjuice=neg_polyjuice,
         critical_field=_NEG_CMD,
@@ -283,8 +292,9 @@ def delete_punct_span(ctx, datasets, punct, low, high):
         return datasets
 
     ctx.obj.register_transform(_DEL_PUNCT_SPAN_CMD)
-
+    rng = random.numpy_seeded_rng()
     transf = transform.PunctSpanDelete(
+        rng=rng,
         punct=punct,
         low=low,
         high=high,
@@ -349,10 +359,11 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
     ctx.obj.register_transform(_INS_TEXT_CMD)
 
     gpu = accelerator.use_gpu(no_gpu)
-
+    rng = random.numpy_seeded_rng()
     mask_func = functools.partial(
         mask.mask_random_insert,
         func=lang_model.mT5_masking_function,
+        rng=rng,
         p=prob,
         max_masks=max_masks,
     )
