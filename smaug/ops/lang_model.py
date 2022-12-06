@@ -1,6 +1,4 @@
 import dataclasses
-import functools
-import logging
 import re
 import transformers
 
@@ -24,6 +22,8 @@ class MaskedLanguageModelOutput:
 
 def mT5_generate(
     text: core.DataLike[str],
+    model: transformers.MT5ForConditionalGeneration,
+    tokenizer: transformers.T5Tokenizer,
     clean_outputs: bool = True,
     cuda: bool = False,
 ) -> MaskedLanguageModelOutput:
@@ -31,6 +31,8 @@ def mT5_generate(
 
     Args:
         text: sentences to use as input.
+        model: mT5 model to use.
+        tokenizer: T5 tokenizer to use.
         clean_outputs: If replacing output, specifies whether small transformations should
             be aplied to the output sentences to improve their quality.
         cuda: Whether to use cuda enabled gpu or not.
@@ -38,7 +40,6 @@ def mT5_generate(
 
     text = core.promote_to_data(text)
 
-    model, tokenizer = _mT5_load()
     if cuda:
         model.cuda()
 
@@ -68,16 +69,6 @@ def mT5_generate(
 
 def mT5_masking_function(idx: int):
     return f"<extra_id_{idx}>"
-
-
-@functools.lru_cache(maxsize=1)
-def _mT5_load():
-    log = logging.getLogger(__name__)
-    name = "google/mt5-large"
-    log.info("Loading %s model.", name)
-    model = transformers.MT5ForConditionalGeneration.from_pretrained(name)
-    tokenizer = transformers.T5Tokenizer.from_pretrained(name)
-    return model, tokenizer
 
 
 def _mT5_replace_masks(source: str, output: str) -> Tuple[str, GeneratedSpans]:

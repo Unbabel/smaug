@@ -1,6 +1,7 @@
 import click
 import functools
 
+from smaug import models
 from smaug.ops import ner
 from smaug.ops import nli
 from smaug import validation
@@ -132,14 +133,16 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
 
     gpu = accelerator.use_gpu(no_gpu)
 
-    roberta = functools.partial(nli.roberta_mnli_predict, cuda=gpu)
+    model, tokenizer = models.roberta_mnli_load()
+    predict_func = functools.partial(nli.roberta_mnli_predict, model=model, tokenizer=tokenizer, cuda=gpu)
+    contradiction_id = nli.roberta_mnli_contradiction_id(model)
 
     processed = [dataset for dataset in datasets]
     for transform in transforms:
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Contradictions for {transform}"
         )
-        val = validation.IsContradiction(roberta, critical_field=transform)
+        val = validation.IsContradiction(predict_func, contradiction_id, critical_field=transform)
         for dataset in processed:
             not_validated = dataset["records"]
             validated = []
@@ -236,7 +239,8 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
             lang = dataset["lang"]
             if not ner.stanza_ner_lang_available(lang):
                 continue
-            ner_func = functools.partial(ner.stanza_ner, lang=lang, use_gpu=gpu)
+            ner_pipeline = models.stanza_ner_load(lang, gpu)
+            ner_func = functools.partial(ner.stanza_ner, ner_pipeline=ner_pipeline)
             val = validation.EqualNamedEntityCount(
                 ner_func=ner_func,
                 critical_field=transform,
