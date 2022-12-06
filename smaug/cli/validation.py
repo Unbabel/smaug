@@ -134,7 +134,9 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
     gpu = accelerator.use_gpu(no_gpu)
 
     model, tokenizer = models.roberta_mnli_load()
-    predict_func = functools.partial(nli.roberta_mnli_predict, model=model, tokenizer=tokenizer, cuda=gpu)
+    predict_func = functools.partial(
+        nli.roberta_mnli_predict, model=model, tokenizer=tokenizer, cuda=gpu
+    )
     contradiction_id = nli.roberta_mnli_contradiction_id(model)
 
     processed = [dataset for dataset in datasets]
@@ -142,7 +144,9 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Contradictions for {transform}"
         )
-        val = validation.IsContradiction(predict_func, contradiction_id, critical_field=transform)
+        val = validation.IsContradiction(
+            predict_func, contradiction_id, critical_field=transform
+        )
         for dataset in processed:
             not_validated = dataset["records"]
             validated = []

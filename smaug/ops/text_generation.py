@@ -21,12 +21,12 @@ _NEGATION = "[negation]"
 
 
 def polyjuice_negate(
-    text: core.DataLike[str], 
-    pos_pipeline: stanza.Pipeline, 
+    text: core.DataLike[str],
+    pos_pipeline: stanza.Pipeline,
     model: transformers.AutoModelForCausalLM,
     tokenizer: transformers.AutoTokenizer,
-    rng: np.random.Generator, 
-    cuda: bool = False
+    rng: np.random.Generator,
+    cuda: bool = False,
 ) -> core.Data[Optional[str]]:
     """Polyjuice model conditioned on negation.
 
@@ -53,7 +53,9 @@ def polyjuice_negate(
     if cuda:
         model.cuda()
 
-    sentences_with_prompts = [(s, _add_negation_prompt(pos_pipeline, rng, s)) for s in text]
+    sentences_with_prompts = [
+        (s, _add_negation_prompt(pos_pipeline, rng, s)) for s in text
+    ]
     prompts = [p for _, p in sentences_with_prompts if p is not None]
     with torch.no_grad():
         outputs = []
@@ -93,7 +95,9 @@ def polyjuice_negate(
     )
 
 
-def _add_negation_prompt(pos_pipeline: stanza.Pipeline, rng: np.random.Generator, doc: str) -> Optional[str]:
+def _add_negation_prompt(
+    pos_pipeline: stanza.Pipeline, rng: np.random.Generator, doc: str
+) -> Optional[str]:
     tagged = pos_tagging.stanza_pos_predict(doc, pos_pipeline).item()
     possible_mask_intervals = []
     for sentence in tagged.sentences:

@@ -356,6 +356,44 @@ def _mask_sentence_random_replace(
     return " ".join(splits)
 
 
+def mask_poisson_spans(
+    text: core.DataLike[str],
+    func: MaskFunction,
+    rng: np.random.Generator,
+) -> core.Data[str]:
+    """Masks spans of text with sizes following a poisson distribution.
+
+    Args:
+        text (core.DataLike[str]): text to mask.
+        func (MaskFunction): mask function to apply.
+        rng (np.random.Generator): random generator to use.
+
+    Returns:
+        core.Data[str]: masked text.
+    """
+    text = core.promote_to_data(text)
+    mask_sentence_func = functools.partial(
+        _mask_poisson_spans,
+        func=func,
+        rng=rng,
+    )
+    return core.Data(mask_sentence_func(t) for t in text)
+
+
+def _mask_poisson_spans(text: str, func: MaskFunction, rng: np.random.Generator) -> str:
+    words = text.split()
+    start_idx = None
+    while not start_idx:
+        mask_size = rng.poisson()
+        if len(words) - mask_size < 0:
+            continue
+        start_idx = rng.integers(len(words) - mask_size)
+
+    end_idx = start_idx + mask_size
+    final_words = words[:start_idx] + [func(0)] + words[end_idx:]
+    return " ".join(final_words)
+
+
 def mask_random_insert(
     text: core.DataLike[str],
     func: MaskFunction,

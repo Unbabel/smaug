@@ -5,7 +5,7 @@ from smaug import core
 
 
 def roberta_mnli_predict(
-    text: core.DataLike[str], 
+    text: core.DataLike[str],
     model: transformers.AutoModelForSequenceClassification,
     tokenizer: transformers.AutoTokenizer,
     cuda: bool = False,
@@ -28,6 +28,7 @@ def roberta_mnli_predict(
         return model(input_ids).logits
 
 
-def roberta_mnli_contradiction_id(model: transformers.AutoModelForSequenceClassification) -> int:
+def roberta_mnli_contradiction_id(
+    model: transformers.AutoModelForSequenceClassification,
+) -> int:
     return model.config.label2id["CONTRADICTION"]
-
