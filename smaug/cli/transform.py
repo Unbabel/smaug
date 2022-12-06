@@ -1,6 +1,7 @@
 import click
 import functools
 
+from smaug import models
 from smaug import random
 from smaug import transform
 from smaug.ops import lang_model
@@ -71,8 +72,8 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
         rng=rng,
         max_masks=1,
     )
-
-    mT5_func = functools.partial(lang_model.mT5_generate, cuda=gpu)
+    model, tokenizer = models.mT5_load()
+    mT5_func = functools.partial(lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu)
 
     transf = transform.MaskAndFill(
         mask=mask_func,
@@ -151,6 +152,9 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
     gpu = accelerator.use_gpu(no_gpu)
     rng = random.numpy_seeded_rng()
 
+    model, tokenizer = models.mT5_load()
+    mT5_func = functools.partial(lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu)  
+    
     processed = []
 
     pbar = fmt.pbar_from_total(total_records, "Swap a Named Entitiy for Text")
@@ -159,7 +163,8 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
         if not ner.stanza_ner_lang_available(lang):
             processed.append(dataset)
             continue
-        ner_func = functools.partial(ner.stanza_ner, lang=lang, use_gpu=gpu)
+        ner_pipeline = models.stanza_ner_load(lang, gpu)
+        ner_func = functools.partial(ner.stanza_ner, ner_pipeline=ner_pipeline)
         mask_func = functools.partial(
             mask.mask_named_entities,
             ner_func=ner_func,
@@ -167,7 +172,6 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             rng=rng,
             max_masks=1,
         )
-        mT5_func = functools.partial(lang_model.mT5_generate, cuda=gpu)
         transf = transform.MaskAndFill(
             mask=mask_func,
             fill=mT5_func,
@@ -222,8 +226,10 @@ def negate(ctx, datasets, batch_size, no_gpu):
     gpu = accelerator.use_gpu(no_gpu)
 
     rng = random.numpy_seeded_rng()
+    pos_pipeline = models.stanza_pos_load("en", gpu)
+    model, tokenizer = models.polyjuice_load()
     neg_polyjuice = functools.partial(
-        text_generation.polyjuice_negate, rng=rng, cuda=gpu
+        text_generation.polyjuice_negate, pos_pipeline=pos_pipeline, model=model, tokenizer=tokenizer, rng=rng, cuda=gpu
     )
     transf = transform.Negation(
         neg_polyjuice=neg_polyjuice,
@@ -368,7 +374,8 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
         max_masks=max_masks,
     )
 
-    mT5_func = functools.partial(lang_model.mT5_generate, cuda=gpu)
+    model, tokenizer = models.mT5_load()
+    mT5_func = functools.partial(lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu)
     transf = transform.MaskAndFill(
         mask=mask_func,
         fill=mT5_func,

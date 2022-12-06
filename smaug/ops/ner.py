@@ -5,7 +5,6 @@ The documentation for this system is available at
 https://stanfordnlp.github.io/stanza/available_models.html#available-ner-models.
 """
 import dataclasses
-import functools
 import logging
 import stanza
 
@@ -229,29 +228,6 @@ def stanza_ner_lang_available(lang: str) -> bool:
     return True
 
 
-def stanza_ner(
-    text: core.DataLike[str], lang: str = "en", use_gpu: bool = False
-) -> core.Data:
-    @functools.lru_cache(maxsize=1)
-    def load_stanza_ner_pipeline(lang, use_gpu):
-        """Loads a new pipeline for a given language.
-
-        The pipelines are cached for subsequent loads.
-
-        Args:
-            lang: Language of the pipeline.
-            use_gpu: Specifies if a gpu should be used if available.
-
-        Returns:
-            stanza.Pipeline that performs tokenization and named entity
-            recognition.
-        """
-        log = logging.getLogger(__name__)
-        log.info("Loading NER Pipeline for language %s.", lang)
-        processors = "tokenize,ner"
-        stanza.download(lang, processors=processors, logging_level="WARN")
-        return stanza.Pipeline(lang, processors=processors, use_gpu=use_gpu)
-
+def stanza_ner(text: core.DataLike[str], ner_pipeline: stanza.Pipeline) -> core.Data:
     text = core.promote_to_data(text)
-    nlp = load_stanza_ner_pipeline(lang, use_gpu=use_gpu)
-    return core.Data(nlp(t) for t in text)
+    return core.Data(ner_pipeline(t) for t in text)

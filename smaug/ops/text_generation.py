@@ -1,5 +1,6 @@
 import numpy as np
 import re
+import stanza
 import typing
 import torch
 import transformers
@@ -15,13 +16,17 @@ _BLANK_TOK = "[BLANK]"
 _SEP_TOK = "[SEP]"
 _EMPTY_TOK = "[EMPTY]"
 _ANSWER_TOK = "[ANSWER]"
-_EOF_TOKEN = "<|endoftext|>"
 
 _NEGATION = "[negation]"
 
 
 def polyjuice_negate(
-    text: core.DataLike[str], rng: np.random.Generator, cuda: bool = False
+    text: core.DataLike[str], 
+    pos_pipeline: stanza.Pipeline, 
+    model: transformers.AutoModelForCausalLM,
+    tokenizer: transformers.AutoTokenizer,
+    rng: np.random.Generator, 
+    cuda: bool = False
 ) -> core.Data[Optional[str]]:
     """Polyjuice model conditioned on negation.
 
@@ -45,11 +50,10 @@ def polyjuice_negate(
     """
     text = core.promote_to_data(text)
 
-    model, tokenizer = _load_polyjuice()
     if cuda:
         model.cuda()
 
-    sentences_with_prompts = [(s, _add_negation_prompt(rng, s)) for s in text]
+    sentences_with_prompts = [(s, _add_negation_prompt(pos_pipeline, rng, s)) for s in text]
     prompts = [p for _, p in sentences_with_prompts if p is not None]
     with torch.no_grad():
         outputs = []
@@ -89,8 +93,8 @@ def polyjuice_negate(
     )
 
 
-def _add_negation_prompt(rng, doc: str) -> Optional[str]:
-    tagged = pos_tagging.stanza_pos_predict(doc).item()
+def _add_negation_prompt(pos_pipeline: stanza.Pipeline, rng: np.random.Generator, doc: str) -> Optional[str]:
+    tagged = pos_tagging.stanza_pos_predict(doc, pos_pipeline).item()
     possible_mask_intervals = []
     for sentence in tagged.sentences:
         for i, _ in enumerate(sentence.words):
@@ -144,12 +148,3 @@ def _get_verb_if_verb(sentence, i) -> Optional[Tuple]:
     if word.upos != "VERB":
         return None
     return (word.start_char, word.end_char)
-
-
-def _load_polyjuice():
-    model_path = "uw-hai/polyjuice"
-    model = transformers.AutoModelForCausalLM.from_pretrained(model_path)
-    tokenizer = transformers.AutoTokenizer.from_pretrained(
-        model_path, pad_token=_EOF_TOKEN
-    )
-    return model, tokenizer
