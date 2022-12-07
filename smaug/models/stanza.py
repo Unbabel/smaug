@@ -1,5 +1,6 @@
 import stanza
 
+
 def stanza_ner_load(lang: str = "en", use_gpu: bool = False) -> stanza.Pipeline:
     """Loads a new pipeline for a given language.
 
@@ -14,6 +15,7 @@ def stanza_ner_load(lang: str = "en", use_gpu: bool = False) -> stanza.Pipeline:
     processors = "tokenize,ner"
     stanza.download(lang, processors=processors, logging_level="WARN")
     return stanza.Pipeline(lang, processors=processors, use_gpu=use_gpu)
+
 
 def stanza_pos_load(lang: str = "en", use_gpu: bool = False) -> stanza.Pipeline:
     processors = "tokenize,pos"

@@ -155,6 +155,64 @@ def test_random_replace_mask(text: str, func):
         ),
     ],
 )
+def test_mask_poisson_spans(text: str, func):
+    def first_mismatch(list1, list2):
+        for i in range(min(len(list1), len(list2))):
+            if list1[i] != list2[i]:
+                return i
+        return -1
+
+    output = mask.mask_poisson_spans(text, func, np.random.default_rng())
+
+    assert isinstance(output, core.Data)
+    assert len(output) == 1
+
+    o_splits = output.item().split()
+    t_splits = text.split()
+
+    num_splits_diff = len(t_splits) - len(o_splits)
+    # Maximum one extra word is inserted
+    assert num_splits_diff >= -1
+
+    # Index of first mismatch going forward
+    fwd_idx = first_mismatch(t_splits, o_splits)
+    assert fwd_idx != -1
+    # Mismatch must happen on mask
+    assert o_splits[fwd_idx] == func(0)
+
+    # Index of first mismatch going backwards.
+    # This index only works for reversed splits.
+    rev_idx = first_mismatch(t_splits[::-1], o_splits[::-1])
+    assert rev_idx != -1
+
+    # Rev index considering forward o_splits
+    o_rev_idx = len(o_splits) - rev_idx - 1
+    # Rev index considering forward t_splits
+    t_rev_idx = len(t_splits) - rev_idx - 1
+
+    # Mismatch must happen on mask
+    assert o_splits[o_rev_idx] == func(0)
+
+    # Difference in words must be the same as the difference
+    # between the indexes.
+    assert num_splits_diff == t_rev_idx - fwd_idx
+
+
+@pytest.mark.parametrize(
+    "text,func",
+    [
+        pytest.param(
+            "Test with 1 number and another 1.220.",
+            lambda _: "<mask>",
+            id="single sentence with string mask",
+        ),
+        pytest.param(
+            "Test with 1 number and another 1.220.",
+            lambda idx: f"<mask-{idx}>",
+            id="single sentence with masking function",
+        ),
+    ],
+)
 def test_random_insert_mask(text, func):
     output = mask.mask_random_insert(text, func, np.random.default_rng(), p=0.5)
 

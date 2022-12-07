@@ -55,6 +55,10 @@ Detects a single named entity with a [Stanza NER model](https://stanfordnlp.gith
 
 Detects a single number with RegEx and swaps it for text generated with [Google's mT5](https://arxiv.org/abs/2010.11934).
 
+### transf-swp-poisson-span
+
+Replaces a span of text with size given by a Poisson distribution for text generated with [Google's mT5](https://arxiv.org/abs/2010.11934).
+
 ### transf-neg
 
 Negates an english sentence using [PolyJuice](https://arxiv.org/abs/2101.00288) conditioned for negation.
