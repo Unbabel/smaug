@@ -50,6 +50,7 @@ def mT5_generate(
 
     output_ids = model.generate(
         input_ids,
+        max_new_tokens=model.config.max_length,
         do_sample=True,
         top_k=50,
     )

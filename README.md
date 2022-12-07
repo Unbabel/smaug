@@ -19,6 +19,7 @@ pipeline:
   lang: <two letter language code for the input sentences>
 - cmd: transf-swp-ne
 - cmd: transf-swp-num
+- cmd: transf-swp-poisson-span
 - cmd: transf-neg
 - cmd: transf-ins-text
 - cmd: transf-del-punct-span

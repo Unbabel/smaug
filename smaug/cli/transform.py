@@ -16,6 +16,7 @@ from smaug.cli import validation
 
 _SWAP_NUM_CMD = "transf-swp-num"
 _SWAP_NE_CMD = "transf-swp-ne"
+_SWAP_POISSON_SPAN_CMD = "transf-swp-poisson-span"
 _NEG_CMD = "transf-neg"
 _DEL_PUNCT_SPAN_CMD = "transf-del-punct-span"
 _INS_TEXT_CMD = "transf-ins-text"
@@ -397,6 +398,77 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
     processed = []
 
     pbar = fmt.pbar_from_total(total_records, _INS_TEXT_CMD)
+    for dataset in datasets:
+        old_records = dataset["records"]
+        new_records = []
+
+        for i in range(0, len(old_records), batch_size):
+            batch = old_records[i : i + batch_size]
+            records = transf(batch)
+            new_records.extend(records)
+            pbar.update(len(batch))
+
+        dataset["records"] = new_records
+
+        processed.append(dataset)
+    return processed
+
+
+@click.command(
+    _SWAP_POISSON_SPAN_CMD, short_help="Replace random spans of text with mT5."
+)
+@click.option(
+    "--batch-size",
+    default=16,
+    show_default=True,
+    help="Batch size when processing records.",
+)
+@click.option("--no-gpu", is_flag=True, help="Disable gpu.")
+@processor.make
+@processor.post_run(validation.rm_eq, cli_transforms=[_SWAP_POISSON_SPAN_CMD])
+@processor.post_run(
+    validation.rm_pattern,
+    pattern=r"<extra_id_\d{1,2}>",
+    cli_transforms=[_SWAP_POISSON_SPAN_CMD],
+)
+@click.pass_context
+def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
+    """Randomly replaces text spans with sizes following a Poisson distribution.
+
+    This operation is a transformation.
+    It masks a span of text on the original sentence, where the number
+    of masked words (can be 0) is given by the Poisson distribution, and
+    takes as the output the sentence with the masks filled with mT5.
+    """
+    total_records = sum(len(datasets["records"]) for datasets in datasets)
+    if total_records == 0:
+        click.echo(fmt.no_records_message("Insert Text"))
+        return datasets
+
+    ctx.obj.register_transform(_SWAP_POISSON_SPAN_CMD)
+
+    gpu = accelerator.use_gpu(no_gpu)
+    rng = random.numpy_seeded_rng()
+    mask_func = functools.partial(
+        mask.mask_poisson_spans,
+        func=lang_model.mT5_masking_function,
+        rng=rng,
+    )
+
+    model, tokenizer = models.mT5_load()
+    mT5_func = functools.partial(
+        lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
+    )
+    transf = transform.MaskAndFill(
+        mask=mask_func,
+        fill=mT5_func,
+        num_samples=1,
+        critical_field=_SWAP_POISSON_SPAN_CMD,
+    )
+
+    processed = []
+
+    pbar = fmt.pbar_from_total(total_records, _SWAP_POISSON_SPAN_CMD)
     for dataset in datasets:
         old_records = dataset["records"]
         new_records = []

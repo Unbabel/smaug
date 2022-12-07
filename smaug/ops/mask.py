@@ -385,7 +385,7 @@ def _mask_poisson_spans(text: str, func: MaskFunction, rng: np.random.Generator)
     start_idx = None
     while not start_idx:
         mask_size = rng.poisson()
-        if len(words) - mask_size < 0:
+        if len(words) - mask_size <= 0:
             continue
         start_idx = rng.integers(len(words) - mask_size)
 

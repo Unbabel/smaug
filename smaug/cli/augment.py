@@ -74,6 +74,7 @@ augment.add_command(transform.insert_text)
 augment.add_command(transform.negate)
 augment.add_command(transform.swap_ne)
 augment.add_command(transform.swap_num)
+augment.add_command(transform.swap_poisson_span)
 
 augment.add_command(validation.keep_contradiction)
 augment.add_command(validation.keep_eq_ne_count)
