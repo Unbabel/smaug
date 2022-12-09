@@ -1,5 +1,6 @@
 import click
 import functools
+import re
 
 from smaug import models
 from smaug.ops import ner
@@ -45,11 +46,11 @@ def rm_eq(ctx, datasets, cli_transforms):
 
     for transform in transforms:
         pbar = fmt.pbar_from_total(total_records, f"Remove Equal for {transform}")
-        val = validation.NotEqual(critical_field=transform)
+        val_func = functools.partial(validation.not_equal, perturbation=transform)
 
         for dataset in processed:
             not_validated = dataset["records"]
-            dataset["records"] = val(not_validated)
+            dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
 
     return processed
@@ -90,10 +91,14 @@ def rm_pattern(ctx, datasets, pattern, cli_transforms):
         pbar = fmt.pbar_from_total(
             total_records, f'Remove Pattern "{pattern}" for {transform}'
         )
-        val = validation.NoRegexMatch(pattern=pattern, critical_field=transform)
+        val_func = functools.partial(
+            validation.no_regex_match,
+            perturbation=transform,
+            pattern=re.compile(pattern),
+        )
         for dataset in processed:
             not_validated = dataset["records"]
-            dataset["records"] = val(not_validated)
+            dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
 
     return processed
@@ -144,15 +149,18 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Contradictions for {transform}"
         )
-        val = validation.IsContradiction(
-            predict_func, contradiction_id, critical_field=transform
+        val_func = functools.partial(
+            validation.is_contradiction,
+            perturbation=transform,
+            predict_func=predict_func,
+            contradiction_id=contradiction_id,
         )
         for dataset in processed:
             not_validated = dataset["records"]
             validated = []
             for i in range(0, len(not_validated), batch_size):
                 batch = not_validated[i : i + batch_size]
-                validated.extend(val(batch))
+                validated.extend(val_func(batch))
                 pbar.update(len(batch))
             dataset["records"] = validated
     return processed
@@ -188,10 +196,12 @@ def keep_eq_num_count(ctx, datasets, cli_transforms):
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Equal Numbers Count for {transform}"
         )
-        val = validation.EqualNumbersCount(critical_field=transform)
+        val_func = functools.partial(
+            validation.equal_numbers_count, perturbation=transform
+        )
         for dataset in processed:
             not_validated = dataset["records"]
-            dataset["records"] = val(not_validated)
+            dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
     return processed
 
@@ -245,15 +255,16 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
                 continue
             ner_pipeline = models.stanza_ner_load(lang, gpu)
             ner_func = functools.partial(ner.stanza_ner, ner_pipeline=ner_pipeline)
-            val = validation.EqualNamedEntityCount(
+            val_func = functools.partial(
+                validation.equal_named_entites_count,
+                perturbation=transform,
                 ner_func=ner_func,
-                critical_field=transform,
             )
             not_validated = dataset["records"]
             validated = []
             for i in range(0, len(not_validated), batch_size):
                 batch = not_validated[i : i + batch_size]
-                validated.extend(val(batch))
+                validated.extend(val_func(batch))
                 pbar.update(len(batch))
             dataset["records"] = validated
     return processed
@@ -299,14 +310,15 @@ def keep_geq_edit_dist(ctx, datasets, distance, level, cli_transforms):
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Edit Distance above {distance} for {transform}"
         )
-        val = validation.GeqEditDistance(
+        val_func = functools.partial(
+            validation.geq_edit_distance,
+            perturbation=transform,
             min_dist=distance,
             level=level,
-            critical_field=transform,
         )
         for dataset in processed:
             not_validated = dataset["records"]
-            dataset["records"] = val(not_validated)
+            dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
     return processed
 
@@ -358,13 +370,14 @@ def keep_leq_char_ins(ctx, datasets, chars, max_insertions, cli_transforms):
             total_records,
             f"Keep {chars} insertions below {max_insertions} for {transform}",
         )
-        val = validation.LeqCharInsertions(
+        val_func = functools.partial(
+            validation.leq_char_insertions,
+            perturbation=transform,
             chars=chars,
             max_insertions=max_insertions,
-            critical_field=transform,
         )
         for dataset in processed:
             not_validated = dataset["records"]
-            dataset["records"] = val(not_validated)
+            dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
     return processed
