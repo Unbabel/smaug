@@ -78,11 +78,11 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
         lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
     )
 
-    transf = transform.MaskAndFill(
-        mask=mask_func,
-        fill=mT5_func,
-        num_samples=1,
-        critical_field=_SWAP_NUM_CMD,
+    transf_func = functools.partial(
+        transform.mask_and_fill,
+        perturbation=_SWAP_NUM_CMD,
+        mask_func=mask_func,
+        fill_func=mT5_func,
     )
 
     processed = []
@@ -94,7 +94,7 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transf(batch)
+            records = transf_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -177,11 +177,11 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             rng=rng,
             max_masks=1,
         )
-        transf = transform.MaskAndFill(
-            mask=mask_func,
-            fill=mT5_func,
-            num_samples=1,
-            critical_field=_SWAP_NE_CMD,
+        transf_func = functools.partial(
+            transform.mask_and_fill,
+            perturbation=_SWAP_NE_CMD,
+            mask_func=mask_func,
+            fill_func=mT5_func,
         )
 
         old_records = dataset["records"]
@@ -189,7 +189,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transf(batch)
+            records = transf_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -241,9 +241,10 @@ def negate(ctx, datasets, batch_size, no_gpu):
         rng=rng,
         cuda=gpu,
     )
-    transf = transform.Negation(
-        neg_polyjuice=neg_polyjuice,
-        critical_field=_NEG_CMD,
+    transf_func = functools.partial(
+        transform.negate,
+        perturbation=_NEG_CMD,
+        polyjuice_func=neg_polyjuice,
     )
 
     pbar = fmt.pbar_from_total(total_records, "Negate the Sentence")
@@ -256,7 +257,7 @@ def negate(ctx, datasets, batch_size, no_gpu):
 
             for i in range(0, len(old_records), batch_size):
                 batch = old_records[i : i + batch_size]
-                records = transf(batch)
+                records = transf_func(batch)
                 new_records.extend(records)
                 pbar.update(len(batch))
 
@@ -309,13 +310,13 @@ def delete_punct_span(ctx, datasets, punct, low, high):
 
     ctx.obj.register_transform(_DEL_PUNCT_SPAN_CMD)
     rng = random.numpy_seeded_rng()
-    transf = transform.PunctSpanDelete(
+    transf_func = functools.partial(
+        transform.punct_span_delete,
+        perturbation=_DEL_PUNCT_SPAN_CMD,
         rng=rng,
         punct=punct,
         low=low,
         high=high,
-        num_samples=1,
-        critical_field=_DEL_PUNCT_SPAN_CMD,
     )
 
     processed = []
@@ -325,7 +326,7 @@ def delete_punct_span(ctx, datasets, punct, low, high):
     )
     for dataset in datasets:
         old_records = dataset["records"]
-        dataset["records"] = transf(old_records)
+        dataset["records"] = transf_func(old_records)
 
         pbar.update(len(old_records))
 
@@ -388,11 +389,11 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
     mT5_func = functools.partial(
         lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
     )
-    transf = transform.MaskAndFill(
-        mask=mask_func,
-        fill=mT5_func,
-        num_samples=1,
-        critical_field=_INS_TEXT_CMD,
+    transf_func = functools.partial(
+        transform.mask_and_fill,
+        perturbation=_INS_TEXT_CMD,
+        mask_func=mask_func,
+        fill_func=mT5_func,
     )
 
     processed = []
@@ -404,7 +405,7 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transf(batch)
+            records = transf_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -459,11 +460,11 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
     mT5_func = functools.partial(
         lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
     )
-    transf = transform.MaskAndFill(
-        mask=mask_func,
-        fill=mT5_func,
-        num_samples=1,
-        critical_field=_SWAP_POISSON_SPAN_CMD,
+    transf_func = functools.partial(
+        transform.mask_and_fill,
+        perturbation=_SWAP_POISSON_SPAN_CMD,
+        mask_func=mask_func,
+        fill_func=mT5_func,
     )
 
     processed = []
@@ -475,7 +476,7 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transf(batch)
+            records = transf_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 

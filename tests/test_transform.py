@@ -1,39 +1,19 @@
 import numpy as np
-import pytest
 
 from smaug import pipeline
 from smaug import transform
-from smaug._itertools import repeat_items
 
 
-@pytest.mark.parametrize(
-    "original,num_samples",
-    [
-        pytest.param(
-            [
-                pipeline.State(original="First source sentence with words"),
-                pipeline.State(original="Second source sentence to be transformed"),
-            ],
-            1,
-            id="1 critical sample",
-        ),
-        pytest.param(
-            [
-                pipeline.State(original="First source sentence with words"),
-                pipeline.State(original="Second source sentence to be transformed"),
-            ],
-            10,
-            id="10 critical samples",
-        ),
-    ],
-)
-def test_random_delete(original, num_samples):
-    transf = transform.RandomDelete(np.random.default_rng(), num_samples=num_samples)
+def test_random_delete():
+    original = [
+        pipeline.State(original="First source sentence with words"),
+        pipeline.State(original="Second source sentence to be transformed"),
+    ]
+    transformed = transform.random_delete(
+        original, "critical", np.random.default_rng(), p=0.5
+    )
+    assert len(original) == len(transformed)
 
-    transformed = transf(original)
-    assert num_samples * len(original) == len(transformed)
-
-    original = repeat_items(original, num_samples)
     for o, t in zip(original, transformed):
         assert o.original == t.original
 
