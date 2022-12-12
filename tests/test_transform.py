@@ -1,5 +1,6 @@
 import numpy as np
 
+from smaug import core
 from smaug import pipeline
 from smaug import transform
 
@@ -12,6 +13,7 @@ def test_random_delete():
     transformed = transform.random_delete(
         original, "critical", np.random.default_rng(), p=0.5
     )
+    assert isinstance(transformed, core.Data)
     assert len(original) == len(transformed)
 
     for o, t in zip(original, transformed):

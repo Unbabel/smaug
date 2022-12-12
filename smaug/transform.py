@@ -11,12 +11,12 @@ from smaug.ops import lang_model
 
 
 def random_delete(
-    records: List[pipeline.State],
+    records: core.DataLike[pipeline.State],
     perturbation: str,
     rng: np.random.Generator,
     p: float = 0.2,
-) -> List[pipeline.State]:
-    """Deletes random words in the sentences
+) -> core.Data[pipeline.State]:
+    """Deletes random words in the sentences.
 
     Args:
         records: Records to transform.
@@ -37,11 +37,11 @@ def random_delete(
 
 
 def span_delete(
-    records: List[pipeline.State],
+    records: core.DataLike[pipeline.State],
     perturbation: str,
     rng: np.random.Generator,
     min_size: float = 0.25,
-) -> List[pipeline.State]:
+) -> core.Data[pipeline.State]:
     """Deletes a random span of words in the sentences.
 
     Args:
@@ -81,13 +81,13 @@ def span_delete(
 
 
 def punct_span_delete(
-    records: List[pipeline.State],
+    records: core.DataLike[pipeline.State],
     perturbation: str,
     rng: np.random.Generator,
     punct: str = ".,!?",
     low: int = 4,
     high: int = 10,
-) -> List[pipeline.State]:
+) -> core.Data[pipeline.State]:
     """Removes a span between two punctuation symbols.
 
     Args:
@@ -95,7 +95,7 @@ def punct_span_delete(
         perturbation: Name of the perturbation to consider.
         rng: Numpy random generator to use.
         punct: Punctuation symbols to consider.
-        low: Ninimum number of words for a span to be eligible for deletion.
+        low: Minimum number of words for a span to be eligible for deletion.
         high: Maximum number of words for a span to be eligible for deletion.
     """
 
@@ -144,12 +144,12 @@ def punct_span_delete(
 
 
 def shuffle_named_entities(
-    records: List[pipeline.State],
+    records: core.DataLike[pipeline.State],
     perturbation: str,
     entities: List[str],
     ner_func: Callable[[core.DataLike[str]], core.Data],
     rng: np.random.Generator,
-) -> List[pipeline.State]:
+) -> core.Data[pipeline.State]:
     """Shuffles the named entities in a sentence.
 
     This transform uses a NER model to identify entities according to several
@@ -159,7 +159,7 @@ def shuffle_named_entities(
         records: Records to transform.
         perturbatinon: Name of the perturbation to consider.
         entities: Entity tags to consider. They should be a subset of the tags
-            supported by the ner_func.
+        supported by the ner_func.
         ner_func: Function to perform NER.
         rng: numpy generator to use.
 
@@ -232,10 +232,10 @@ def shuffle_named_entities(
 
 
 def negate(
-    records: List[pipeline.State],
+    records: core.DataLike[pipeline.State],
     perturbation: str,
     polyjuice_func: Callable[[core.DataLike[str]], core.Data[Optional[str]]],
-) -> List[pipeline.State]:
+) -> core.Data[pipeline.State]:
     """Negates the original sentence.
 
     Not all sentences can be negated, and so only some records will be updated.
@@ -248,6 +248,7 @@ def negate(
     Returns:
         The transformed records.
     """
+    records = core.promote_to_data(records)
     original_sentences = [x.original for x in records]
     negated = polyjuice_func(original_sentences)
 
@@ -260,11 +261,11 @@ def negate(
 
 
 def mask_and_fill(
-    records: List[pipeline.State],
+    records: core.DataLike[pipeline.State],
     perturbation: str,
     mask_func: Callable[[core.DataLike[str]], core.Data[str]],
     fill_func: Callable[[core.DataLike[str]], lang_model.MaskedLanguageModelOutput],
-) -> List[pipeline.State]:
+) -> core.Data[pipeline.State]:
     """Generates critical errors by masking and filling sentences.
 
     Args:
@@ -276,7 +277,7 @@ def mask_and_fill(
     Returns:
         The transformed records.
     """
-
+    records = core.promote_to_data(records)
     original_sentences = [x.original for x in records]
     masked = mask_func(original_sentences)
     filled = fill_func(masked)
@@ -291,10 +292,10 @@ def mask_and_fill(
 
 
 def _transform_with_func(
-    records: List[pipeline.State],
+    records: core.DataLike[pipeline.State],
     perturbation: str,
     transf_func: Callable[[str], Optional[str]],
-) -> List[pipeline.State]:
+) -> core.Data[pipeline.State]:
     """Transforms records by applying a given transform function.
 
     The transform function may not be successfull, in which case it
@@ -308,6 +309,7 @@ def _transform_with_func(
     Returns:
         Transformed records.
     """
+    records = core.promote_to_data(records)
     for orig in records:
         perturbed = transf_func(orig.original)
         if perturbed is not None:
