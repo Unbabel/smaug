@@ -9,7 +9,9 @@ from smaug import core
 from smaug import pipeline
 
 
-def not_equal(records: core.DataLike[pipeline.State], perturbation: str) -> core.Data[pipeline.State]:
+def not_equal(
+    records: core.DataLike[pipeline.State], perturbation: str
+) -> core.Data[pipeline.State]:
     """Filters critical records that are equal to the original.
 
     Args:
@@ -45,9 +47,13 @@ def equal_named_entites_count(
 
     return _validate_with_func(records, perturbation, val_func)
 
+
 _NUM_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")
 
-def equal_numbers_count(records: core.DataLike[pipeline.State], perturbation: str) -> core.Data[pipeline.State]:
+
+def equal_numbers_count(
+    records: core.DataLike[pipeline.State], perturbation: str
+) -> core.Data[pipeline.State]:
     """Filters records that do not have the same numbers count.
 
     Args:
@@ -84,6 +90,7 @@ def is_contradiction(
     Returns:
         core.Data[pipeline.State]: Validated records.
     """
+
     def val_func(original: str, perturbed: str) -> bool:
         nli_input = f"{original} </s></s> {perturbed}"
         logits = predict_func(nli_input)
@@ -124,8 +131,10 @@ def no_regex_match(
     Returns:
         core.Data[pipeline.State]: Validated records.
     """
+
     def val_func(_: str, perturbed: str) -> bool:
         return pattern.search(perturbed) is None
+
     return _validate_with_func(records, perturbation, val_func)
 
 
@@ -146,11 +155,14 @@ def geq_edit_distance(
     Returns:
         core.Data[pipeline.State]: Validated records.
     """
+
     def char_val_func(original: str, perturbed: str) -> bool:
         return nltk.metrics.edit_distance(original, perturbed) >= min_dist
-    
+
     def word_val_func(original: str, perturbed: str) -> bool:
-        return nltk.metrics.edit_distance(original.split(), perturbed.split()) >= min_dist
+        return (
+            nltk.metrics.edit_distance(original.split(), perturbed.split()) >= min_dist
+        )
 
     levels = ("char", "word")
     if level not in levels:
@@ -160,7 +172,10 @@ def geq_edit_distance(
 
 
 def leq_char_insertions(
-    records: core.DataLike[pipeline.State], perturbation: str, chars: str, max_insertions: int
+    records: core.DataLike[pipeline.State],
+    perturbation: str,
+    chars: str,
+    max_insertions: int,
 ) -> core.Data[pipeline.State]:
     """Filters perturbations with many insertions of specific characters when compared to the original.
 

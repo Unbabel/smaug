@@ -1,5 +1,6 @@
 import re
 
+from smaug import core
 from smaug import pipeline
 from smaug import validation
 
@@ -54,7 +55,10 @@ def test_equal_number_count_validation():
         ),
     ]
     output = validation.equal_numbers_count(records, "critical")
-    assert expected == output
+    assert isinstance(output, core.Data)
+    assert len(expected) == len(output)
+    for e, o in zip(expected, output):
+        assert e == o
 
 
 def test_no_regex_match():
@@ -85,7 +89,10 @@ def test_no_regex_match():
         pipeline.State(original="", perturbations={}),
     ]
     output = validation.no_regex_match(records, "critical", re.compile(r"<mask_\d+>"))
-    assert expected == output
+    assert isinstance(output, core.Data)
+    assert len(expected) == len(output)
+    for e, o in zip(expected, output):
+        assert e == o
 
 
 def test_max_char_insertions():
@@ -137,7 +144,10 @@ def test_max_char_insertions():
             perturbations={},
         ),
     ]
-    validated = validation.leq_char_insertions(
+    output = validation.leq_char_insertions(
         records, "critical", chars="<>()[]{}", max_insertions=1
     )
-    assert expected == validated
+    assert isinstance(output, core.Data)
+    assert len(expected) == len(output)
+    for e, o in zip(expected, output):
+        assert e == o
