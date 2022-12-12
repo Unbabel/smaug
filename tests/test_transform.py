@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from smaug import pipeline
-from smaug.transform import deletion
+from smaug import transform
 from smaug._itertools import repeat_items
 
 
@@ -28,9 +28,9 @@ from smaug._itertools import repeat_items
     ],
 )
 def test_random_delete(original, num_samples):
-    transform = deletion.RandomDelete(np.random.default_rng(), num_samples=num_samples)
+    transf = transform.RandomDelete(np.random.default_rng(), num_samples=num_samples)
 
-    transformed = transform(original)
+    transformed = transf(original)
     assert num_samples * len(original) == len(transformed)
 
     original = repeat_items(original, num_samples)
