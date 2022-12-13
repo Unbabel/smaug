@@ -1,5 +1,7 @@
+import itertools
 import pytest
 
+from smaug import frozen
 from smaug import sentence
 
 from typing import Optional
@@ -47,19 +49,58 @@ def test_modification(old: str, new: str, modification: sentence.Modification):
     assert old == old_output
 
 
-def test_modification_trace():
-    old = 'Original Sentence with "text to modify" and "more text to modify".'
-    new = 'Original Sentence with "modified text" and "more modifed text".'
-
-    trace = sentence.ModificationTrace.from_modifications(
-        sentence.Modification('"text to modify"', '"modified text"', 23),
-        sentence.Modification('"more text to modify"', '"more modifed text"', 43),
-    )
-
+@pytest.mark.parametrize(
+    "old,new,trace,expected_indices,expected_spans",
+    [
+        pytest.param(
+            'Original Sentence with "text to modify" and "more text to modify".',
+            'Original Sentence with "modified text" and "more modifed text".',
+            sentence.ModificationTrace.from_modifications(
+                sentence.Modification('"text to modify"', '"modified text"', 23),
+                sentence.Modification(
+                    '"more text to modify"', '"more modifed text"', 43
+                ),
+            ),
+            sentence.ModifiedIndices(itertools.chain(range(23, 38), range(43, 62))),
+            frozen.frozenlist([sentence.SpanIndex(23, 38), sentence.SpanIndex(43, 62)]),
+            id="No overlap",
+        ),
+        pytest.param(
+            'Original Sentence with "text to modify" and "more text to modify".',
+            'Original Sentence with "modified "overlapped text" modifed text".',
+            sentence.ModificationTrace.from_modifications(
+                sentence.Modification('"text to modify"', '"modified text"', 23),
+                sentence.Modification(
+                    '"more text to modify"', '"more modifed text"', 43
+                ),
+                sentence.Modification('text" and "more', '"overlapped text"', 33),
+            ),
+            sentence.ModifiedIndices(range(23, 64)),
+            frozen.frozenlist([sentence.SpanIndex(23, 64)]),
+            id="With overlap",
+        ),
+    ],
+)
+def test_modification_trace(
+    old: str,
+    new: str,
+    trace: sentence.ModificationTrace,
+    expected_indices: sentence.ModifiedIndices,
+    expected_spans: frozen.frozenlist[sentence.SpanIndex],
+):
     new_output = trace.apply(old)
     assert new == new_output
     old_output = trace.reverse(new_output)
     assert old == old_output
+
+    modified_indices = trace.modified_indices()
+    assert len(expected_indices) == len(modified_indices)
+
+    modified_spans = modified_indices.compress()
+    assert len(expected_spans) == len(modified_spans)
+    for e, m in zip(expected_spans, modified_spans):
+        assert e.start == m.start
+        assert e.end == m.end
 
 
 @pytest.mark.parametrize(

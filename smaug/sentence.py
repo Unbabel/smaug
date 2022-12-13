@@ -1,7 +1,7 @@
 import dataclasses
 import functools
 
-from typing import List, Optional, Tuple, Union
+from typing import Iterable, Iterator, Optional, Tuple, Union
 
 from smaug import frozen
 
@@ -135,38 +135,85 @@ class Modification:
         return reverse.apply(value)
 
 
+class ModifiedIndices:
+    def __init__(self, values: Iterable[int]) -> None:
+        self._idxs = sorted(set(values))
+
+    def add(self, modification: Modification) -> "ModifiedIndices":
+        """Merges the indices modified by the modification into these indices.
+
+        Args:
+            modification: Modification to merge.
+
+        Returns:
+            New modifed indices with the previous and merged indices.
+        """
+        new_idxs = set()
+        offset = modification.new_span_idx.end - modification.old_span_idx.end
+        for idx in self._idxs:
+            # Modified index before the old span. We just add it as this
+            # modification did not change it
+            if idx < modification.old_span_idx.start:
+                new_idxs.add(idx)
+            # Modified idx after the old span. This modification changed its
+            # position by new_end - old_end.
+            elif idx >= modification.old_span_idx.end:
+                new_idxs.add(idx + offset)
+            # Modified idx inside old span. This means we are applying a modification
+            # on top of another modification. No need to do anything as all new
+            # modified indexes will be added.
+            else:
+                pass
+        new_idxs.update(
+            range(modification.new_span_idx.start, modification.new_span_idx.end)
+        )
+        return ModifiedIndices(new_idxs)
+
+    def compress(self) -> frozen.frozenlist[SpanIndex]:
+        """Compresses adjacent indices into spans.
+
+        Returns:
+            Spans of adjacent indices.
+        """
+        def compress_or_add_new_span(
+            spans: frozen.frozenlist[SpanIndex],
+            idx: int,
+        ) -> frozen.frozenlist[SpanIndex]:
+            """Updates the last span with the new index if it is adjacent or creates a new span.
+
+            Args:
+                spans: Spans to update.
+                idx: New index to add.
+
+            Returns:
+                Compressed spans.
+            """
+            if len(spans) == 0 or spans[-1].end != idx:
+                return spans.append(SpanIndex(idx, idx + 1))
+            last = spans[-1]
+            new_last = SpanIndex(last.start, last.end + 1)
+            return spans.replace(len(spans) - 1, new_last)
+
+        return functools.reduce(
+            compress_or_add_new_span, self._idxs, frozen.frozenlist()
+        )
+
+    def __len__(self) -> int:
+        return len(self._idxs)
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self._idxs)
+
+    def __str__(self) -> str:
+        return f'{{{", ".join(str(i) for i in self._idxs)}}}'
+
+
 @dataclasses.dataclass(frozen=True)
 class ModificationTrace:
     """Stores the trace of multiple modifications in order."""
 
     curr: Modification
     prev: Optional["ModificationTrace"] = dataclasses.field(default=None)
-
-    def apply(self, value: str) -> str:
-        """Applies all modifications in order, from the oldest to the newest.
-
-        Args:
-            value: String to apply the modifications.
-
-        Returns:
-            Modified string.
-        """
-        modifications = self.tolist()
-        return functools.reduce(lambda acc, mod: mod.apply(acc), modifications, value)
-
-    def reverse(self, value: str) -> str:
-        """Applies all modifications in reverse order, from the newest to the oldest.
-
-        Args:
-            value: String to apply the modifications.
-
-        Returns:
-            Modified string.
-        """
-        modifications = self.tolist()
-        return functools.reduce(
-            lambda acc, mod: mod.reverse(acc), reversed(modifications), value
-        )
 
     @staticmethod
     def from_modifications(*modifications: Modification) -> "ModificationTrace":
@@ -185,20 +232,46 @@ class ModificationTrace:
             raise ValueError("at least on modification is expected.")
         return curr
 
-    def tolist(self) -> List[Modification]:
-        """Creates a list of the applied modifications, from oldest to newest.
+    def apply(self, value: str) -> str:
+        """Applies all modifications in order, from the oldest to the newest.
+
+        Args:
+            value: String to apply the modifications.
 
         Returns:
-            List with modifications.
+            Modified string.
         """
-        modifications = []
-        self._collect_modifications(modifications)
-        return modifications
+        return functools.reduce(lambda acc, mod: mod.apply(acc), self, value)
 
-    def _collect_modifications(self, acc: List[Modification]):
-        if self.prev is not None:
-            self.prev._collect_modifications(acc)
-        acc.append(self.curr)
+    def reverse(self, value: str) -> str:
+        """Applies all modifications in reverse order, from the newest to the oldest.
+
+        Args:
+            value: String to apply the modifications.
+
+        Returns:
+            Modified string.
+        """
+        return functools.reduce(
+            lambda acc, mod: mod.reverse(acc), reversed(list(self)), value
+        )
+
+    def modified_indices(self) -> ModifiedIndices:
+        return functools.reduce(ModifiedIndices.add, self, ModifiedIndices([]))
+
+    def __iter__(self) -> Iterator[Modification]:
+        """Creates an iterator to visit the modifications from oldest to newest.
+
+        Returns:
+            The iterator object.
+        """
+
+        def _yield_modifications(trace: "ModificationTrace") -> Iterator[Modification]:
+            if trace.prev is not None:
+                yield from _yield_modifications(trace.prev)
+            yield trace.curr
+
+        yield from _yield_modifications(self)
 
 
 @dataclasses.dataclass(frozen=True)

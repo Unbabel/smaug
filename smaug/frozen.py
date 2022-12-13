@@ -18,6 +18,12 @@ class frozenlist(collections.abc.Sequence[_T], Generic[_T]):
     def insert(self, index: SupportsIndex, object: _T) -> "frozenlist[_T]":
         return self._copy_and_apply(lambda new_list: new_list.insert(index, object))
 
+    def replace(self, index: SupportsIndex, object: _T) -> "frozenlist[_T]":
+        new_list = list(self._list)
+        new_list[index] = object
+        new_self = type(self)(new_list)
+        return new_self
+
     def pop(self, index: Optional[SupportsIndex] = None) -> Tuple["frozenlist[_T]", _T]:
         if index is None:
             index = -1
@@ -68,6 +74,22 @@ class frozenlist(collections.abc.Sequence[_T], Generic[_T]):
 
     def __add__(self, x: "frozenlist[_T]") -> "frozenlist[_T]":
         return self.append(*x)
+
+    def __str__(self) -> str:
+        values = [str(el) for el in self]
+        single_line = ", ".join(values)
+        if len(single_line) <= 80:
+            return f"[{single_line}]"
+        lines = "".join(f"\t{v},\n" for v in values)
+        return f"[\n{lines}]"
+
+    def __repr__(self) -> str:
+        values = [repr(el) for el in self]
+        single_line = ", ".join(values)
+        if len(single_line) <= 80:
+            return f"frozenlist([{single_line}])"
+        lines = "".join(f"\t{v},\n" for v in values)
+        return f"frozenlist([\n{lines}])"
 
     def _copy_and_apply(self, func: Callable[[list], None]) -> "frozenlist[_T]":
         new_list = list(self._list)
