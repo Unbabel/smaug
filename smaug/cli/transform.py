@@ -77,11 +77,18 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
     mT5_func = functools.partial(
         lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
     )
+    # FIXME: Mask and fill needs to process sentences.
+    def mask_func_wrapper(data):
+        masked = mask_func(data)
+        # Pass a list with values. Although not the correct
+        # signature, the fill func receives a DataLike object
+        # and so this is correct.
+        return [m.value for m in masked]
 
     transf_func = functools.partial(
         transform.mask_and_fill,
         perturbation=_SWAP_NUM_CMD,
-        mask_func=mask_func,
+        mask_func=mask_func_wrapper,
         fill_func=mT5_func,
     )
 
@@ -177,10 +184,18 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             rng=rng,
             max_masks=1,
         )
+        # FIXME: Mask and fill needs to process sentences.
+        def mask_func_wrapper(data):
+            masked = mask_func(data)
+            # Pass a list with values. Although not the correct
+            # signature, the fill func receives a DataLike object
+            # and so this is correct.
+            return [m.value for m in masked]
+
         transf_func = functools.partial(
             transform.mask_and_fill,
             perturbation=_SWAP_NE_CMD,
-            mask_func=mask_func,
+            mask_func=mask_func_wrapper,
             fill_func=mT5_func,
         )
 
@@ -389,10 +404,18 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
     mT5_func = functools.partial(
         lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
     )
+
+    def mask_func_wrapper(data):
+        masked = mask_func(data)
+        # Pass a list with values. Although not the correct
+        # signature, the fill func receives a DataLike object
+        # and so this is correct.
+        return [m.value for m in masked]
+
     transf_func = functools.partial(
         transform.mask_and_fill,
         perturbation=_INS_TEXT_CMD,
-        mask_func=mask_func,
+        mask_func=mask_func_wrapper,
         fill_func=mT5_func,
     )
 
@@ -460,10 +483,18 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
     mT5_func = functools.partial(
         lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
     )
+
+    def mask_func_wrapper(data):
+        masked = mask_func(data)
+        # Pass a list with values. Although not the correct
+        # signature, the fill func receives a DataLike object
+        # and so this is correct.
+        return [m.value for m in masked]
+
     transf_func = functools.partial(
         transform.mask_and_fill,
         perturbation=_SWAP_POISSON_SPAN_CMD,
-        mask_func=mask_func,
+        mask_func=mask_func_wrapper,
         fill_func=mT5_func,
     )
 

@@ -98,7 +98,8 @@ def _mT5_replace_masks(source: str, output: str) -> Tuple[str, GeneratedSpans]:
 def _mT5_clean_output(output: str, spans: GeneratedSpans) -> Tuple[str, GeneratedSpans]:
     while output.startswith((".", ",", "!", "?", " ")):
         output = output[1:]
-        spans = [(s[0] - 1, s[1] - 1) for s in spans]
+        # Can't go below 0 index
+        spans = [(s[0] - 1 if s[0] > 0 else 0, s[1] - 1) for s in spans]
     clean = output.rstrip()
     if len(spans) > 1:
         # Update last span to be atmost the output size

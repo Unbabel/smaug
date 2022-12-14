@@ -45,7 +45,7 @@ def test_mask_intervals(docs, intervals, func, expected):
     assert isinstance(output, core.Data)
     assert len(expected) == len(output)
     for e, p in zip(expected, output):
-        assert e == p
+        assert e == p.value
 
 
 @pytest.mark.parametrize(
@@ -70,7 +70,7 @@ def test_number_mask(text, func, expected):
     assert isinstance(output, core.Data)
     assert len(expected) == len(output)
     for e, p in zip(expected, output):
-        assert e == p
+        assert e == p.value
 
 
 @pytest.mark.parametrize(
@@ -101,7 +101,7 @@ def test_number_mask_max(text, func, expected_opts):
         return (
             isinstance(output, core.Data)
             and len(expected) == len(output)
-            and all(e == p for e, p in zip(expected, output))
+            and all(e == p.value for e, p in zip(expected, output))
         )
 
     output = mask.mask_numbers(text, func, np.random.default_rng(), max_masks=1)
@@ -125,11 +125,10 @@ def test_number_mask_max(text, func, expected_opts):
 )
 def test_random_replace_mask(text: str, func):
     output = mask.mask_random_replace(text, func, np.random.default_rng(), p=0.5)
-
     t_splits = text.split()
     assert isinstance(output, core.Data)
     assert len(output) == 1
-    o_splits = output.item().split()
+    o_splits = output.item().value.split()
     assert len(t_splits) == len(o_splits)
 
     mask_idx = 0
@@ -163,11 +162,10 @@ def test_mask_poisson_spans(text: str, func):
         return -1
 
     output = mask.mask_poisson_spans(text, func, np.random.default_rng())
-
     assert isinstance(output, core.Data)
     assert len(output) == 1
 
-    o_splits = output.item().split()
+    o_splits = output.item().value.split()
     t_splits = text.split()
 
     num_splits_diff = len(t_splits) - len(o_splits)
@@ -183,7 +181,10 @@ def test_mask_poisson_spans(text: str, func):
     # Index of first mismatch going backwards.
     # This index only works for reversed splits.
     rev_idx = first_mismatch(t_splits[::-1], o_splits[::-1])
-    assert rev_idx != -1
+    # Can happen if mask was inserted in the beginning while
+    # masking 0 words
+    if rev_idx == -1:
+        rev_idx = len(o_splits) - 1
 
     # Rev index considering forward o_splits
     o_rev_idx = len(o_splits) - rev_idx - 1
@@ -219,15 +220,14 @@ def test_random_insert_mask(text, func):
     assert isinstance(output, core.Data)
     assert len(output) == 1
     t_splits = text.split()
-    o_splits = output.item().split()
+    o_splits = output.item().value.split()
     assert len(t_splits) <= len(o_splits)
 
     mask_idx = 0
     t_idx = 0
     for o_word in o_splits:
-        t_word = t_splits[t_idx]
         # No mask was inserted. Move d_idx forward.
-        if t_word == o_word:
+        if t_idx < len(t_splits) and t_splits[t_idx] == o_word:
             t_idx += 1
         # Mask inserted. Verify it is correct.
         else:

@@ -175,6 +175,7 @@ class ModifiedIndices:
         Returns:
             Spans of adjacent indices.
         """
+
         def compress_or_add_new_span(
             spans: frozen.frozenlist[SpanIndex],
             idx: int,
@@ -347,5 +348,28 @@ class Sentence:
         new_trace = ModificationTrace(modification, self.trace)
         return Sentence(value=new_value, trace=new_trace)
 
+    def find(self, char: str, start=None, end=None) -> int:
+        return self.value.find(char, start, end)
+
+    def __len__(self) -> int:
+        return len(self.value)
+
     def __str__(self) -> str:
         return self.value
+
+
+SentenceLike = Union[str, Sentence]
+
+
+def promote_to_sentence(s: SentenceLike) -> Sentence:
+    """Promotes a sentence like object to sentence.
+
+    Args:
+        s: Object to promote.
+
+    Returns:
+        Promoted object.
+    """
+    if isinstance(s, Sentence):
+        return s
+    return Sentence(s)

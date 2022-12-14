@@ -18,10 +18,10 @@ class Data(frozen.frozenlist[T]):
         return self[0]
 
     def __repr__(self) -> str:
-        values = [str(el) for el in self]
+        values = [repr(el) for el in self]
         single_line = ", ".join(values)
         if len(single_line) <= 80:
-            return f"Data({single_line})"
+            return f"Data[{single_line}]"
         lines = "".join(f"\t{v},\n" for v in values)
         return f"Data[\n" f"{lines}" f"]"
 
