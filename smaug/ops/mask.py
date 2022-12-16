@@ -407,16 +407,18 @@ def _mask_poisson_spans(
             found = True
 
     start_idx = word_starts[start_word_idx]
-    # This can happed when we chose a word to start and mask the
-    # remainder of the sentence.
-    end_idx = (
-        len(text)
-        if start_word_idx + num_masked_words == len(word_starts)
-        else word_starts[start_word_idx + num_masked_words]
-    )
+    # We are masking until the end of the sentence.
+    if start_word_idx + num_masked_words == len(word_starts):
+        end_idx = len(text)
+    # We are inserting words.
+    elif num_masked_words == 0:
+        end_idx = start_idx
+    # We are masking words in the middle of the sentence.
+    else:
+        end_idx = word_starts[start_word_idx + num_masked_words] - 1
 
-    # If adding in the last position, dont add final space.
-    span = f"{func(0)} " if end_idx != len(text) else f"{func(0)}"
+    # Only add space if inserting words. Otherwise, use available spaces.
+    span = f"{func(0)} " if num_masked_words == 0 else func(0)
     return text.replace(span, (start_idx, end_idx))
 
 
@@ -465,9 +467,9 @@ def _mask_sentence_random_insert(
             sentence = sentence.insert(func(0), 0)
         return sentence
 
-    spaces = [i for i, c in enumerate(sentence.value) if c == " "]
+    after_spaces = [i + 1 for i, c in enumerate(sentence.value) if c == " "]
     # Possible indexes where to start mask.
-    possible_mask_starts = np.array([0] + spaces + [len(sentence)])
+    possible_mask_starts = np.array([0] + after_spaces + [len(sentence)])
 
     mask_idxs = rng.choice([False, True], size=len(possible_mask_starts), p=(1 - p, p))
     (true_idxs,) = np.nonzero(mask_idxs)
@@ -483,7 +485,7 @@ def _mask_sentence_random_insert(
         mask = func(mask_idx)
         # Insert space before unless we are at the beginning, where we insert
         # a space after the mask.
-        insert = f" {mask}" if idx != 0 else f"{mask} "
+        insert = f"{mask} " if idx != len(sentence) else f" {mask}"
         sentence = sentence.insert(insert, idx)
         mask_idx -= 1
 

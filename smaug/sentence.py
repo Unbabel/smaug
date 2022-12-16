@@ -299,7 +299,8 @@ class Sentence:
         """
         # An insertion is a replacement of the empty string at position idx
         # by the given span.
-        return self.apply_modification(Modification(old="", new=span, idx=idx))
+        # Set index to int as numpy.int64 is not serializable.
+        return self.apply_modification(Modification(old="", new=span, idx=int(idx)))
 
     def delete(self, loc: SpanIndexLike) -> "Sentence":
         """Creates a new sentence by deleting the characters indexed by loc.
@@ -350,6 +351,21 @@ class Sentence:
 
     def find(self, char: str, start=None, end=None) -> int:
         return self.value.find(char, start, end)
+
+    def startswith(self, prefix, start=None, end=None) -> bool:
+        return self.value.startswith(prefix, start, end)
+
+    def rstrip(self) -> "Sentence":
+        last_space_idx = len(self)
+
+        while last_space_idx > 0 and self.value[last_space_idx - 1] == " ":
+            last_space_idx -= 1
+
+        new_self = self
+        if last_space_idx != len(self):
+            new_self = self.delete((last_space_idx, len(self)))
+
+        return new_self
 
     def __len__(self) -> int:
         return len(self.value)

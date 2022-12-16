@@ -7,6 +7,7 @@ from typing import Callable, Iterable, List, Optional
 
 from smaug import core
 from smaug import pipeline
+from smaug import sentence
 from smaug.ops import lang_model
 
 
@@ -263,8 +264,12 @@ def negate(
 def mask_and_fill(
     records: core.DataLike[pipeline.State],
     perturbation: str,
-    mask_func: Callable[[core.DataLike[str]], core.Data[str]],
-    fill_func: Callable[[core.DataLike[str]], lang_model.MaskedLanguageModelOutput],
+    mask_func: Callable[
+        [core.DataLike[sentence.SentenceLike]], core.Data[sentence.Sentence]
+    ],
+    fill_func: Callable[
+        [core.DataLike[sentence.SentenceLike]], core.Data[sentence.Sentence]
+    ],
 ) -> core.Data[pipeline.State]:
     """Generates critical errors by masking and filling sentences.
 
@@ -278,15 +283,14 @@ def mask_and_fill(
         The transformed records.
     """
     records = core.promote_to_data(records)
-    original_sentences = [x.original for x in records]
+    original_sentences = core.Data(x.original for x in records)
     masked = mask_func(original_sentences)
     filled = fill_func(masked)
 
-    for orig, t in zip(records, filled.text):
-        orig.perturbations[perturbation] = t
-
-    for orig, s in zip(records, filled.spans):
-        orig.metadata[perturbation] = s
+    for orig, t in zip(records, filled):
+        orig.perturbations[perturbation] = t.value
+        if t.trace is not None:
+            orig.metadata[perturbation] = t.trace.modified_indices().compress()
 
     return records
 
