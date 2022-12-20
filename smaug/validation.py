@@ -6,6 +6,7 @@ import torch
 from typing import Callable
 
 from smaug import core
+from smaug import sentence
 from smaug import pipeline
 
 
@@ -27,17 +28,17 @@ def not_equal(
 def equal_named_entites_count(
     records: core.DataLike[pipeline.State],
     perturbation: str,
-    ner_func: Callable[[core.DataLike[str]], core.Data],
+    ner_func: Callable[[core.DataLike[sentence.SentenceLike]], core.Data],
 ) -> core.Data[pipeline.State]:
     """Filters records that do not have the same named entity count.
 
     Args:
-        records (core.DataLike[pipeline.State]): Records to validate.
-        perturbation (str): Name of the perturbation to consider.
-        ner_func (Callable[[core.DataLike[str]], core.Data]): Function to perform NER.
+        records: Records to validate.
+        perturbation: Name of the perturbation to consider.
+        ner_func: Function to perform NER.
 
     Returns:
-        core.Data[pipeline.State]: validated records.
+       Validated records.
     """
 
     def val_func(original: str, perturbed: str) -> bool:

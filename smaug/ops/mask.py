@@ -166,7 +166,7 @@ def _mask_sentence_intervals(
 
 def mask_named_entities(
     text: core.DataLike[sentence.SentenceLike],
-    ner_func: Callable[[core.DataLike[str]], core.Data],
+    ner_func: Callable[[core.DataLike[sentence.SentenceLike]], core.Data],
     mask_func: MaskFunction,
     rng: np.random.Generator,
     filter_entities: Optional[Iterable[str]] = None,
@@ -204,7 +204,7 @@ def mask_named_entities(
 
 def _mask_sentence_named_entities(
     text: sentence.Sentence,
-    ner_func: Callable[[core.DataLike[str]], core.Data],
+    ner_func: Callable[[core.DataLike[sentence.SentenceLike]], core.Data],
     mask_func: MaskFunction,
     rng: np.random.Generator,
     filter_entities: Optional[Iterable[str]] = None,
@@ -220,7 +220,7 @@ def _mask_sentence_named_entities(
         unique_entities = set(filter_entities)
         filter_entities_func = lambda ent: ent.type in unique_entities
 
-    text_w_ner = ner_func(text.value).item()
+    text_w_ner = ner_func(text).item()
 
     detected_entities = filter(filter_entities_func, text_w_ner.entities)
     if p != 1:
