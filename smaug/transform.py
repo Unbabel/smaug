@@ -235,7 +235,9 @@ def shuffle_named_entities(
 def negate(
     records: core.DataLike[pipeline.State],
     perturbation: str,
-    polyjuice_func: Callable[[core.DataLike[str]], core.Data[Optional[str]]],
+    polyjuice_func: Callable[
+        [core.DataLike[sentence.SentenceLike]], core.Data[Optional[sentence.Sentence]]
+    ],
 ) -> core.Data[pipeline.State]:
     """Negates the original sentence.
 
@@ -256,7 +258,7 @@ def negate(
     for orig, n in zip(records, negated):
         if n is None:
             continue
-        orig.perturbations[perturbation] = n
+        orig.perturbations[perturbation] = n.value
 
     return records
 

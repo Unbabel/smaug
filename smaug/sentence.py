@@ -336,6 +336,12 @@ class Sentence:
         old = self.value[loc.start : loc.end]
         return self.apply_modification(Modification(old=old, new=span, idx=loc.start))
 
+    def prepend(self, span: str) -> "Sentence":
+        return self.insert(span, 0)
+
+    def append(self, span: str) -> "Sentence":
+        return self.insert(span, len(self))
+
     def apply_modification(self, modification: Modification) -> "Sentence":
         """Creates a new sentence by applying a modification to this sentence.
 
@@ -349,8 +355,8 @@ class Sentence:
         new_trace = ModificationTrace(modification, self.trace)
         return Sentence(value=new_value, trace=new_trace)
 
-    def find(self, char: str, start=None, end=None) -> int:
-        return self.value.find(char, start, end)
+    def find(self, sub: str, start=None, end=None) -> int:
+        return self.value.find(sub, start, end)
 
     def startswith(self, prefix, start=None, end=None) -> bool:
         return self.value.startswith(prefix, start, end)
