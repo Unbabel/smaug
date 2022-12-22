@@ -361,6 +361,9 @@ class Sentence:
     def startswith(self, prefix, start=None, end=None) -> bool:
         return self.value.startswith(prefix, start, end)
 
+    def endswith(self, suffix, start=None, end=None) -> bool:
+        return self.value.endswith(suffix, start, end)
+
     def rstrip(self) -> "Sentence":
         last_space_idx = len(self)
 

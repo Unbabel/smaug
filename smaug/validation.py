@@ -156,7 +156,7 @@ def no_regex_match(
 
 
 def geq_edit_distance(
-    records: core.DataLike[pipeline.State], perturbation: str, min_dist: str, level: str
+    records: core.DataLike[pipeline.State], perturbation: str, min_dist: int, level: str
 ) -> core.Data[pipeline.State]:
     """Filters perturbations with a small minimum edit distance to the original.
 

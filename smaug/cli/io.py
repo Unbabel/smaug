@@ -130,6 +130,8 @@ def write_json(datasets, path, indent):
                 return list(o)
             if isinstance(o, sentence.SpanIndex):
                 return (o.start, o.end)
+            if isinstance(o, sentence.Sentence):
+                return o.value
             return super().default(o)
 
     records = []
