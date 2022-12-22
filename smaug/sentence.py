@@ -373,6 +373,12 @@ class Sentence:
 
         return new_self
 
+    def __iter__(self) -> Iterator[str]:
+        yield from self.value
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, Sentence) and self.value == o.value
+
     def __len__(self) -> int:
         return len(self.value)
 
