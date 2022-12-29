@@ -1,4 +1,6 @@
-from typing import List, Tuple, TypeVar, Union
+import dataclasses
+
+from typing import Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 from smaug import _itertools
 from smaug import frozen
@@ -30,52 +32,162 @@ ListLike = Union[List[T], frozen.frozenlist[T]]
 DataLike = Union[Data[T], ListLike[T], T]
 
 
-def promote_to_data(value: DataLike[T]) -> Data[T]:
-    """Promotes a value to data.
+@dataclasses.dataclass(frozen=True, eq=True, order=True)
+class SpanIndex:
 
-    The following promotion rules are applied:
-    * Data objects are returned as is.
-    * Iterable objects are iterated and their elements used for the Data object.
-    * All other objects are wrapped in a Data object of length 1.
+    start: int
+    end: int
 
-    Args:
-        value (DataLike[T]): Value to promote.
+    def encloses(self, other: "SpanIndex") -> bool:
+        """Verifies whether this span totally encloses the other.
 
-    Returns:
-        Data[T]: The Data object corresponding to the promoted value.
-    """
-    if isinstance(value, Data):
-        return value
-    if isinstance(value, (list, frozen.frozenlist)):
-        return Data(value)
-    return Data([value])
+        If a span A encloses a span B, then:
+        A.start  B.start   B.end    A.end
+        ---|--------|--------|--------|---
+        """
+        return self.start <= other.start <= other.end <= self.end
 
+    def partial_overlaps(self, other: "SpanIndex") -> bool:
+        """Verifies whether this span partially overlaps the other.
 
-def broadcast_data(*values: Data) -> Tuple[Data, ...]:
-    """Broadcasts all values to the length of the longest Data object.
-
-    All objects must either have length 1 or the length of the longest object.
-
-    Args:
-        *values (Data): values to broadcast.
-
-    Raises:
-        ValueError: If the length of some data object is neither the
-        target length or 1.
-
-    Returns:
-        Tuple[Data, ...]: tuple with the broadcasted values. This tuple
-        has one value for each received argument, corresponding to the
-        respective broadcasted value.
-    """
-    tgt_len = max(len(v) for v in values)
-    failed = next((v for v in values if len(v) not in (1, tgt_len)), None)
-    if failed:
-        raise ValueError(
-            f"Unable to broadcast Data of length {len(failed)} to length {tgt_len}: "
-            f"received length must the same as target length or 1."
+        If a span A partially overlaps span B, then:
+        A.start  B.start   A.end    B.end
+        ---|--------|--------|--------|---
+        or
+        B.start  A.start   B.end    A.end
+        ---|--------|--------|--------|---
+        """
+        return (
+            self.start <= other.start <= self.end <= other.end
+            or other.start <= self.start <= other.end <= self.end
         )
-    broadcasted_values = (
-        v if len(v) == tgt_len else _itertools.repeat_items(v, tgt_len) for v in values
-    )
-    return tuple(Data(bv) for bv in broadcasted_values)
+
+    def intersects(self, other: "SpanIndex") -> bool:
+        return (
+            self.encloses(other)
+            or other.encloses(self)
+            or self.partial_overlaps(other)
+            or other.partial_overlaps(self)
+        )
+
+    def __post_init__(self):
+        if self.start < 0:
+            raise ValueError(f"'start' must be positive but is {self.start}.")
+        if self.end < 0:
+            raise ValueError(f"'end' must be positive but is {self.end}.")
+        if self.end < self.start:
+            msg = f"'end' must be greater or equal to 'start': start={self.start}, end={self.end}"
+            raise ValueError(msg)
+
+    def __str__(self) -> str:
+        return f"[{self.start}, {self.end}]"
+
+
+SpanIndexLike = Union[Tuple[int, int], SpanIndex]
+
+
+@dataclasses.dataclass(frozen=True, eq=True)
+class Modification:
+    """Stores a modification that was applied to a given sentence.
+
+    Attributes:
+        old: The old span to be replaced by new.
+        new: The new span to replace old.
+        idx: Position where to start replacing.
+    """
+
+    old: str
+    new: str
+    idx: int
+
+    @property
+    def old_span_idx(self) -> SpanIndex:
+        return SpanIndex(self.idx, self.idx + len(self.old))
+
+    @property
+    def new_span_idx(self) -> SpanIndex:
+        return SpanIndex(self.idx, self.idx + len(self.new))
+
+
+class ModifiedIndices:
+    def __init__(self, values: Iterable[int]) -> None:
+        self._idxs = sorted(set(values))
+
+    def __len__(self) -> int:
+        return len(self._idxs)
+
+    def __iter__(self):
+        return iter(self._idxs)
+
+    def __str__(self) -> str:
+        return f'{{{", ".join(str(i) for i in self._idxs)}}}'
+
+
+@dataclasses.dataclass(frozen=True)
+class ModificationTrace:
+    """Stores the trace of multiple modifications in order."""
+
+    curr: Modification
+    prev: Optional["ModificationTrace"] = dataclasses.field(default=None)
+
+    @staticmethod
+    def from_modifications(*modifications: Modification) -> "ModificationTrace":
+        """Constructs a modification trace by considering the modifications in order.
+
+        Args:
+            modifications: Modifications to store.
+
+        Raises:
+            ValueError: If no modifications were provided.
+
+        Returns:
+            The modification trace.
+        """
+        curr = None
+        for m in modifications:
+            curr = ModificationTrace(m, curr)
+        if curr is None:
+            raise ValueError("at least on modification is expected.")
+        return curr
+
+    def __iter__(self) -> Iterator[Modification]:
+        """Creates an iterator to visit the modifications from oldest to newest.
+
+        Returns:
+            The iterator object.
+        """
+
+        def _yield_modifications(trace: "ModificationTrace") -> Iterator[Modification]:
+            if trace.prev is not None:
+                yield from _yield_modifications(trace.prev)
+            yield trace.curr
+
+        yield from _yield_modifications(self)
+
+
+@dataclasses.dataclass(frozen=True)
+class Sentence:
+    """Represents a sentence that stores applied modifications.
+
+    Each sentence stores its value and the modifications trace
+    that were applied to this sentence.
+    """
+
+    value: str
+
+    trace: Optional[ModificationTrace] = dataclasses.field(default=None)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.value)
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, Sentence) and self.value == o.value
+
+    def __len__(self) -> int:
+        return len(self.value)
+
+    def __str__(self) -> str:
+        return self.value
+
+
+SentenceLike = Union[str, Sentence]

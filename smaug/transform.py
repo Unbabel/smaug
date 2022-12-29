@@ -3,17 +3,18 @@ import re
 
 from typing import Callable, Optional
 
-from smaug import core
+from smaug import ops
 from smaug import pipeline
-from smaug import sentence
+from smaug.core import Data, DataLike, Sentence, SentenceLike
+from smaug.promote import promote_to_data, promote_to_sentence
 
 
 def random_delete(
-    records: core.DataLike[pipeline.State],
+    records: DataLike[pipeline.State],
     perturbation: str,
     rng: np.random.Generator,
     p: float = 0.2,
-) -> core.Data[pipeline.State]:
+) -> Data[pipeline.State]:
     """Deletes random words in the sentences.
 
     Args:
@@ -26,23 +27,23 @@ def random_delete(
         Transformed records.
     """
 
-    def next_word_start(s: sentence.Sentence, start: int):
+    def next_word_start(s: Sentence, start: int):
         # Try to find next space
-        word_delim_idx = s.find(" ", start=start)
+        word_delim_idx = ops.find(s, " ", start=start)
         if word_delim_idx == -1:
             # If not space, then we are at the last word
-            # and return the remainig sentence.
+            # and return the remaining sentence.
             word_delim_idx = len(s)
         return word_delim_idx + 1
 
-    def transform(s: sentence.SentenceLike) -> sentence.Sentence:
-        s = sentence.promote_to_sentence(s)
+    def transform(s: SentenceLike) -> Sentence:
+        s = promote_to_sentence(s)
 
         curr_idx = 0
         while curr_idx < len(s):
             word_start_idx = next_word_start(s, curr_idx)
             if rng.random() < p:
-                s = s.delete((curr_idx, word_start_idx))
+                s = ops.delete(s, (curr_idx, word_start_idx))
             else:
                 curr_idx = word_start_idx
 
@@ -52,13 +53,13 @@ def random_delete(
 
 
 def punct_span_delete(
-    records: core.DataLike[pipeline.State],
+    records: DataLike[pipeline.State],
     perturbation: str,
     rng: np.random.Generator,
     punct: str = ".,!?",
     low: int = 4,
     high: int = 10,
-) -> core.Data[pipeline.State]:
+) -> Data[pipeline.State]:
     """Removes a span between two punctuation symbols.
 
     Args:
@@ -70,8 +71,8 @@ def punct_span_delete(
         high: Maximum number of words for a span to be eligible for deletion.
     """
 
-    def transform(s: sentence.SentenceLike) -> Optional[sentence.Sentence]:
-        s = sentence.promote_to_sentence(s)
+    def transform(s: SentenceLike) -> Optional[Sentence]:
+        s = promote_to_sentence(s)
 
         matches = punct_regex.finditer(s.value)
         spans_delims_idxs = [0] + [m.end() for m in matches] + [len(s)]
@@ -88,12 +89,13 @@ def punct_span_delete(
 
         idx_to_drop = rng.choice(possible_spans_idxs)
 
-        s = s.delete(idx_to_drop).rstrip()
+        s = ops.rstrip(ops.delete(s, idx_to_drop))
 
-        # Too increase credibility of generated sentence,
+        # To increase credibility of generated sentence,
         # replace last "," with "." .
-        if not s.endswith((".", "?", "!")):
-            s = s.delete((len(s) - 1, len(s))).append(".")
+        if not ops.endswith(s, (".", "?", "!")):
+            s = ops.delete(s, (len(s) - 1, len(s)))
+            s = ops.append(s, ".")
 
         return s
 
@@ -102,12 +104,10 @@ def punct_span_delete(
 
 
 def negate(
-    records: core.DataLike[pipeline.State],
+    records: DataLike[pipeline.State],
     perturbation: str,
-    polyjuice_func: Callable[
-        [core.DataLike[sentence.SentenceLike]], core.Data[Optional[sentence.Sentence]]
-    ],
-) -> core.Data[pipeline.State]:
+    polyjuice_func: Callable[[DataLike[SentenceLike]], Data[Optional[Sentence]]],
+) -> Data[pipeline.State]:
     """Negates the original sentence.
 
     Not all sentences can be negated, and so only some records will be updated.
@@ -120,7 +120,7 @@ def negate(
     Returns:
         The transformed records.
     """
-    records = core.promote_to_data(records)
+    records = promote_to_data(records)
     original_sentences = [x.original for x in records]
     negated = polyjuice_func(original_sentences)
 
@@ -129,21 +129,18 @@ def negate(
             continue
         orig.perturbations[perturbation] = n.value
         if n.trace is not None:
-            orig.metadata[perturbation] = n.trace.modified_indices().compress()
+            indices = ops.modified_indices_from_trace(n.trace)
+            orig.metadata[perturbation] = ops.compress_modified_indices(indices)
 
     return records
 
 
 def mask_and_fill(
-    records: core.DataLike[pipeline.State],
+    records: DataLike[pipeline.State],
     perturbation: str,
-    mask_func: Callable[
-        [core.DataLike[sentence.SentenceLike]], core.Data[sentence.Sentence]
-    ],
-    fill_func: Callable[
-        [core.DataLike[sentence.SentenceLike]], core.Data[sentence.Sentence]
-    ],
-) -> core.Data[pipeline.State]:
+    mask_func: Callable[[DataLike[SentenceLike]], Data[Sentence]],
+    fill_func: Callable[[DataLike[SentenceLike]], Data[Sentence]],
+) -> Data[pipeline.State]:
     """Generates critical errors by masking and filling sentences.
 
     Args:
@@ -155,24 +152,25 @@ def mask_and_fill(
     Returns:
         The transformed records.
     """
-    records = core.promote_to_data(records)
-    original_sentences = core.Data(x.original for x in records)
+    records = promote_to_data(records)
+    original_sentences = Data(x.original for x in records)
     masked = mask_func(original_sentences)
     filled = fill_func(masked)
 
     for orig, t in zip(records, filled):
         orig.perturbations[perturbation] = t.value
         if t.trace is not None:
-            orig.metadata[perturbation] = t.trace.modified_indices().compress()
+            indices = ops.modified_indices_from_trace(t.trace)
+            orig.metadata[perturbation] = ops.compress_modified_indices(indices)
 
     return records
 
 
 def _transform_with_func(
-    records: core.DataLike[pipeline.State],
+    records: DataLike[pipeline.State],
     perturbation: str,
-    transf_func: Callable[[sentence.SentenceLike], Optional[sentence.Sentence]],
-) -> core.Data[pipeline.State]:
+    transf_func: Callable[[SentenceLike], Optional[Sentence]],
+) -> Data[pipeline.State]:
     """Transforms records by applying a given transform function.
 
     The transform function may not be successfull, in which case it
@@ -186,13 +184,12 @@ def _transform_with_func(
     Returns:
         Transformed records.
     """
-    records = core.promote_to_data(records)
+    records = promote_to_data(records)
     for orig in records:
         perturbed = transf_func(orig.original)
         if perturbed is not None:
             orig.perturbations[perturbation] = perturbed
             if perturbed.trace is not None:
-                orig.metadata[
-                    perturbation
-                ] = perturbed.trace.modified_indices().compress()
+                indices = ops.modified_indices_from_trace(perturbed.trace)
+                orig.metadata[perturbation] = ops.compress_modified_indices(indices)
     return records

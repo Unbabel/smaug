@@ -12,8 +12,8 @@ from packaging import version
 
 from typing import Tuple
 
-from smaug import core
-from smaug import sentence
+from smaug.core import Data, DataLike, SentenceLike
+from smaug.promote import promote_to_data, promote_to_sentence
 
 
 @dataclasses.dataclass
@@ -229,9 +229,7 @@ def stanza_ner_lang_available(lang: str) -> bool:
     return True
 
 
-def stanza_ner(
-    text: core.DataLike[sentence.SentenceLike], ner_pipeline: stanza.Pipeline
-) -> core.Data:
+def stanza_ner(text: DataLike[SentenceLike], ner_pipeline: stanza.Pipeline) -> Data:
     """Performs named entity recognition with a Stanza NER pipeline.
 
     Args:
@@ -241,6 +239,6 @@ def stanza_ner(
     Returns:
         Detected named entities.
     """
-    text = core.promote_to_data(text)
-    sentences = map(sentence.promote_to_sentence, text)
-    return core.Data(ner_pipeline(s.value) for s in sentences)
+    text = promote_to_data(text)
+    sentences = map(promote_to_sentence, text)
+    return Data(ner_pipeline(s.value) for s in sentences)

@@ -1,20 +1,21 @@
 import re
 import transformers
 
-from smaug import core
-from smaug import sentence
+from smaug import ops
+from smaug.core import Data, DataLike, Sentence, SentenceLike
+from smaug.promote import promote_to_data, promote_to_sentence
 
 
 _MASK_REGEX = re.compile(r"<extra_id_\d{1,2}>")
 
 
 def mT5_generate(
-    text: core.DataLike[sentence.SentenceLike],
+    text: DataLike[SentenceLike],
     model: transformers.MT5ForConditionalGeneration,
     tokenizer: transformers.T5Tokenizer,
     clean_outputs: bool = True,
     cuda: bool = False,
-) -> core.Data[sentence.Sentence]:
+) -> Data[Sentence]:
     """Generates with Google's mT5 model.
 
     Args:
@@ -22,12 +23,12 @@ def mT5_generate(
         model: mT5 model to use.
         tokenizer: T5 tokenizer to use.
         clean_outputs: If replacing output, specifies whether small transformations should
-            be aplied to the output sentences to improve their quality.
+            be applied to the output sentences to improve their quality.
         cuda: Whether to use cuda enabled gpu or not.
     """
 
-    text = core.promote_to_data(text)
-    sentences = core.Data(sentence.promote_to_sentence(t) for t in text)
+    text = promote_to_data(text)
+    sentences = Data(promote_to_sentence(t) for t in text)
 
     if cuda:
         model.cuda()
@@ -49,16 +50,16 @@ def mT5_generate(
     outputs = [_mT5_replace_masks(s, o) for s, o in zip(sentences, outputs)]
 
     if clean_outputs:
-        outputs = [_mT5_clean_output(o) for o in (outputs)]
+        outputs = [_mT5_clean_output(o) for o in outputs]
 
-    return core.Data(outputs)
+    return Data(outputs)
 
 
 def mT5_masking_function(idx: int):
     return f"<extra_id_{idx}>"
 
 
-def _mT5_replace_masks(source: sentence.Sentence, output: str) -> sentence.Sentence:
+def _mT5_replace_masks(source: Sentence, output: str) -> Sentence:
     spans = _MASK_REGEX.split(output)[1:]
 
     generated_spans = []
@@ -76,12 +77,12 @@ def _mT5_replace_masks(source: sentence.Sentence, output: str) -> sentence.Sente
             generated_spans.append((first_idx, last_idx))
 
             replace_span = (first_idx, first_idx + len(mask))
-            source = source.replace(escaped_span, replace_span)
+            source = ops.replace(source, escaped_span, replace_span)
 
     return source
 
 
-def _mT5_clean_output(output: sentence.Sentence) -> sentence.Sentence:
-    while output.startswith((".", ",", "!", "?", " ")):
-        output = output.delete((0, 1))
-    return output.rstrip()
+def _mT5_clean_output(output: Sentence) -> Sentence:
+    while ops.startswith(output, (".", ",", "!", "?", " ")):
+        output = ops.delete(output, (0, 1))
+    return ops.rstrip(output)

@@ -1,12 +1,12 @@
 import torch
 import transformers
 
-from smaug import core
-from smaug import sentence
+from smaug.core import DataLike, SentenceLike
+from smaug.promote import promote_to_data, promote_to_sentence
 
 
 def roberta_mnli_predict(
-    text: core.DataLike[sentence.SentenceLike],
+    text: DataLike[SentenceLike],
     model: transformers.RobertaForSequenceClassification,
     tokenizer: transformers.PreTrainedTokenizerBase,
     cuda: bool = False,
@@ -22,8 +22,8 @@ def roberta_mnli_predict(
     Returns:
         Logits for each class.
     """
-    text = core.promote_to_data(text)
-    sentences = [sentence.promote_to_sentence(t) for t in text]
+    text = promote_to_data(text)
+    sentences = [promote_to_sentence(t) for t in text]
     if cuda:
         model.cuda()
     with torch.no_grad():
