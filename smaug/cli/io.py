@@ -3,8 +3,10 @@ import json
 import pandas as pd
 import typing
 
+from smaug import frozen
 from smaug import pipeline
 from smaug import random
+from smaug.core import Sentence, SpanIndex
 from smaug.cli import fmt
 from smaug.cli import param
 from smaug.cli import processor
@@ -124,6 +126,12 @@ def write_json(datasets, path, indent):
                     "perturbations": o.perturbations,
                     "metadata": o.metadata,
                 }
+            if isinstance(o, frozen.frozenlist):
+                return list(o)
+            if isinstance(o, SpanIndex):
+                return o.start, o.end
+            if isinstance(o, Sentence):
+                return o.value
             return super().default(o)
 
     records = []

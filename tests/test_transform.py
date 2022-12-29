@@ -20,7 +20,7 @@ def test_random_delete():
         assert o.original == t.original
 
         original_splits = t.original.split()
-        critical_splits = t.perturbations["critical"].split()
+        critical_splits = t.perturbations["critical"].value.split()
 
         assert len(critical_splits) <= len(original_splits)
         for word in critical_splits:

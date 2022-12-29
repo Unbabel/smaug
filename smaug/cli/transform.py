@@ -177,6 +177,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             rng=rng,
             max_masks=1,
         )
+
         transf_func = functools.partial(
             transform.mask_and_fill,
             perturbation=_SWAP_NE_CMD,
@@ -389,6 +390,7 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
     mT5_func = functools.partial(
         lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
     )
+
     transf_func = functools.partial(
         transform.mask_and_fill,
         perturbation=_INS_TEXT_CMD,
@@ -460,6 +462,7 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
     mT5_func = functools.partial(
         lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
     )
+
     transf_func = functools.partial(
         transform.mask_and_fill,
         perturbation=_SWAP_POISSON_SPAN_CMD,

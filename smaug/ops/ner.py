@@ -12,7 +12,8 @@ from packaging import version
 
 from typing import Tuple
 
-from smaug import core
+from smaug.core import Data, DataLike, SentenceLike
+from smaug.promote import promote_to_data, promote_to_sentence
 
 
 @dataclasses.dataclass
@@ -218,7 +219,7 @@ def stanza_ner_lang_available(lang: str) -> bool:
         return False
     model_info = _STANZA_NER_MODEL_INFO[lang]
     if model_info.req_stanza_version > _AVAILABLE_STANZA_VERSION:
-        logging.warn(
+        logging.warning(
             'Required Stanza version for language "%s" is "%s" but found "%s".',
             lang,
             model_info.req_stanza_version,
@@ -228,6 +229,16 @@ def stanza_ner_lang_available(lang: str) -> bool:
     return True
 
 
-def stanza_ner(text: core.DataLike[str], ner_pipeline: stanza.Pipeline) -> core.Data:
-    text = core.promote_to_data(text)
-    return core.Data(ner_pipeline(t) for t in text)
+def stanza_ner(text: DataLike[SentenceLike], ner_pipeline: stanza.Pipeline) -> Data:
+    """Performs named entity recognition with a Stanza NER pipeline.
+
+    Args:
+        text: Text to process.
+        ner_pipeline: Stanza NER pipeline to apply.
+
+    Returns:
+        Detected named entities.
+    """
+    text = promote_to_data(text)
+    sentences = map(promote_to_sentence, text)
+    return Data(ner_pipeline(s.value) for s in sentences)
