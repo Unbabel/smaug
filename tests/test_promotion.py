@@ -36,4 +36,3 @@ def test_promote_to_data(value, expected):
     assert len(expected) == len(promoted)
     for e, p in zip(expected, promoted):
         assert e == p
-

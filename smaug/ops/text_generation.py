@@ -127,7 +127,9 @@ def _polyjuice_inference(
     return tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
 
 
-def _extract_results(prompt: Sentence, polyjuice_output: str) -> typing.Optional[Sentence]:
+def _extract_results(
+    prompt: Sentence, polyjuice_output: str
+) -> typing.Optional[Sentence]:
     prompt_and_answers = polyjuice_output.split(_SEP_TOK)
     if len(prompt_and_answers) < 2:
         return None
@@ -139,7 +141,9 @@ def _extract_results(prompt: Sentence, polyjuice_output: str) -> typing.Optional
     prompt_no_prefix = ops.delete(prompt, (0, negation_end + 1))
     sep_start = ops.find(prompt_no_prefix, _SEP_TOK)
     # -1 to account for extra space
-    masked_sentence = ops.delete(prompt_no_prefix, (sep_start - 1, len(prompt_no_prefix)))
+    masked_sentence = ops.delete(
+        prompt_no_prefix, (sep_start - 1, len(prompt_no_prefix))
+    )
 
     for answer in answers.split(_ANSWER_TOK)[:-1]:
         # Avoid bad escape char by replacing single \ with \\

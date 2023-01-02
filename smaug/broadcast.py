@@ -3,6 +3,7 @@ from smaug.core import Data
 
 from typing import Tuple
 
+
 def broadcast_data(*values: Data) -> Tuple[Data, ...]:
     """Broadcasts all values to the length of the longest Data object.
 

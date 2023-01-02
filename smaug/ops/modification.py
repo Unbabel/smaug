@@ -18,9 +18,7 @@ def apply_modification(m: Modification, value: str) -> str:
         A string with the applied modification.
     """
     if not value.startswith(m.old, m.idx):
-        raise ValueError(
-            f'str "{value}" does not have "{m.old}" at position {m.idx}.'
-        )
+        raise ValueError(f'str "{value}" does not have "{m.old}" at position {m.idx}.')
     replace_start = m.idx
     replace_end = replace_start + len(m.old)
     return f"{value[:replace_start]}{m.new}{value[replace_end:]}"
@@ -78,7 +76,9 @@ def modified_indices_from_trace(t: ModificationTrace) -> ModifiedIndices:
     return functools.reduce(append_modified_indices, t, ModifiedIndices([]))
 
 
-def append_modified_indices(indices: ModifiedIndices, m: Modification) -> ModifiedIndices:
+def append_modified_indices(
+    indices: ModifiedIndices, m: Modification
+) -> ModifiedIndices:
     """Merges the indices modified by the modification into these indices.
 
     Args:
@@ -104,9 +104,7 @@ def append_modified_indices(indices: ModifiedIndices, m: Modification) -> Modifi
         # modified indexes will be added.
         else:
             pass
-    new_idxs.update(
-        range(m.new_span_idx.start, m.new_span_idx.end)
-    )
+    new_idxs.update(range(m.new_span_idx.start, m.new_span_idx.end))
     return ModifiedIndices(new_idxs)
 
 
@@ -117,7 +115,9 @@ def compress_modified_indices(indices: ModifiedIndices) -> frozenlist[SpanIndex]
         Spans of adjacent indices.
     """
 
-    def compress_or_add_new_span(spans: frozenlist[SpanIndex], idx: int) -> frozenlist[SpanIndex]:
+    def compress_or_add_new_span(
+        spans: frozenlist[SpanIndex], idx: int
+    ) -> frozenlist[SpanIndex]:
         """Updates the last span with the new index if it is adjacent or creates a new span.
 
         Args:

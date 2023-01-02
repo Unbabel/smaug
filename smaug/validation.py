@@ -10,7 +10,9 @@ from smaug.core import Data, DataLike, SentenceLike
 from smaug.promote import promote_to_data, promote_to_sentence
 
 
-def not_equal(records: DataLike[pipeline.State], perturbation: str) -> Data[pipeline.State]:
+def not_equal(
+    records: DataLike[pipeline.State], perturbation: str
+) -> Data[pipeline.State]:
     """Filters critical records that are equal to the original.
 
     Args:
@@ -30,7 +32,9 @@ def not_equal(records: DataLike[pipeline.State], perturbation: str) -> Data[pipe
 
 
 def equal_named_entites_count(
-    records: DataLike[pipeline.State], perturbation: str, ner_func: Callable[[DataLike[SentenceLike]], Data],
+    records: DataLike[pipeline.State],
+    perturbation: str,
+    ner_func: Callable[[DataLike[SentenceLike]], Data],
 ) -> Data[pipeline.State]:
     """Filters records that do not have the same named entity count.
 
@@ -54,7 +58,9 @@ def equal_named_entites_count(
 _NUM_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")
 
 
-def equal_numbers_count(records: DataLike[pipeline.State], perturbation: str) -> Data[pipeline.State]:
+def equal_numbers_count(
+    records: DataLike[pipeline.State], perturbation: str
+) -> Data[pipeline.State]:
     """Filters records that do not have the same numbers count.
 
     Args:

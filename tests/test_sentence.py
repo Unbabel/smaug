@@ -111,9 +111,7 @@ def test_deletion(original: Sentence, loc: SpanIndexLike, expected: Sentence):
             Sentence(
                 'Original Sentence, text to replace " without", modifications.',
                 trace=ModificationTrace.from_modifications(
-                    Modification(
-                        " without", ', text to replace " without",', 17
-                    ),
+                    Modification(" without", ', text to replace " without",', 17),
                 ),
             ),
             id="Middle of sentence replacement.",

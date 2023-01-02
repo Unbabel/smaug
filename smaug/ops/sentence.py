@@ -36,7 +36,7 @@ def replace(s: Sentence, span: str, loc: SpanIndexLike) -> Sentence:
         Sentence with the replacement operation applied.
     """
     loc = promote_to_span_index(loc)
-    old = s.value[loc.start: loc.end]
+    old = s.value[loc.start : loc.end]
     return modify_sentence(s, Modification(old=old, new=span, idx=loc.start))
 
 
@@ -51,7 +51,7 @@ def delete(s: Sentence, loc: SpanIndexLike) -> Sentence:
         Sentence with the deletion operation applied.
     """
     loc = promote_to_span_index(loc)
-    to_delete = s.value[loc.start: loc.end]
+    to_delete = s.value[loc.start : loc.end]
     # A deletion is a replacement of the span indexed by loc with the
     # empty string.
     return modify_sentence(s, Modification(old=to_delete, new="", idx=loc.start))

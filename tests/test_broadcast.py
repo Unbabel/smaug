@@ -3,6 +3,7 @@ import pytest
 from smaug.broadcast import broadcast_data
 from smaug.core import Data
 
+
 @pytest.mark.parametrize(
     "values,expected",
     [
