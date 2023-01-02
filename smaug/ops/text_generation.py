@@ -142,7 +142,8 @@ def _extract_results(prompt: Sentence, polyjuice_output: str) -> typing.Optional
     masked_sentence = ops.delete(prompt_no_prefix, (sep_start - 1, len(prompt_no_prefix)))
 
     for answer in answers.split(_ANSWER_TOK)[:-1]:
-        answer = answer.strip()
+        # Avoid bad escape char by replacing single \ with \\
+        answer = answer.strip().replace("\\", "\\\\")
         answer = answer if answer != _EMPTY_TOK else ""
         blank_start = ops.find(masked_sentence, _BLANK_TOK)
         blank_end = blank_start + len(_BLANK_TOK)
