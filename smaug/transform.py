@@ -129,8 +129,7 @@ def negate(
             continue
         orig.perturbations[perturbation] = n.value
         if n.trace is not None:
-            indices = ops.modified_indices_from_trace(n.trace)
-            orig.metadata[perturbation] = ops.compress_modified_indices(indices)
+            orig.metadata[perturbation] = ops.modified_spans_from_trace(n.trace)
 
     return records
 
@@ -160,8 +159,7 @@ def mask_and_fill(
     for orig, t in zip(records, filled):
         orig.perturbations[perturbation] = t.value
         if t.trace is not None:
-            indices = ops.modified_indices_from_trace(t.trace)
-            orig.metadata[perturbation] = ops.compress_modified_indices(indices)
+            orig.metadata[perturbation] = ops.modified_spans_from_trace(t.trace)
 
     return records
 
@@ -190,6 +188,7 @@ def _transform_with_func(
         if perturbed is not None:
             orig.perturbations[perturbation] = perturbed
             if perturbed.trace is not None:
-                indices = ops.modified_indices_from_trace(perturbed.trace)
-                orig.metadata[perturbation] = ops.compress_modified_indices(indices)
+                orig.metadata[perturbation] = ops.modified_spans_from_trace(
+                    perturbed.trace
+                )
     return records

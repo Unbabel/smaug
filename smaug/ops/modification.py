@@ -1,6 +1,6 @@
 import functools
 
-from smaug.core import Modification, ModifiedIndices, ModificationTrace, SpanIndex
+from smaug.core import Modification, ModificationTrace, SpanIndex
 from smaug.frozen import frozenlist
 
 
@@ -72,65 +72,47 @@ def reverse_modification_trace(t: ModificationTrace, value: str) -> str:
     )
 
 
-def modified_indices_from_trace(t: ModificationTrace) -> ModifiedIndices:
-    return functools.reduce(append_modified_indices, t, ModifiedIndices([]))
-
-
-def append_modified_indices(
-    indices: ModifiedIndices, m: Modification
-) -> ModifiedIndices:
-    """Merges the indices modified by the modification into these indices.
+def modified_spans_from_trace(t: ModificationTrace) -> frozenlist[SpanIndex]:
+    """Computes the spans modified by a trace.
 
     Args:
-        indices: Indexes to append too.
-        m: Modification to merge.
+        t: Modification trace to process.
 
     Returns:
-        New modified indices with the previous and merged indices.
-    """
-    new_idxs = set()
-    offset = m.new_span_idx.end - m.old_span_idx.end
-    for idx in indices:
-        # Modified index before the old span. We just add it as this
-        # modification did not change it
-        if idx < m.old_span_idx.start:
-            new_idxs.add(idx)
-        # Modified idx after the old span. This modification changed its
-        # position by new_end - old_end.
-        elif idx >= m.old_span_idx.end:
-            new_idxs.add(idx + offset)
-        # Modified idx inside old span. This means we are applying a modification
-        # on top of another modification. No need to do anything as all new
-        # modified indexes will be added.
-        else:
-            pass
-    new_idxs.update(range(m.new_span_idx.start, m.new_span_idx.end))
-    return ModifiedIndices(new_idxs)
-
-
-def compress_modified_indices(indices: ModifiedIndices) -> frozenlist[SpanIndex]:
-    """Compresses adjacent indices into spans.
-
-    Returns:
-        Spans of adjacent indices.
+        Spans of modified indices. Deletions are represented with the empty span.
     """
 
-    def compress_or_add_new_span(
-        spans: frozenlist[SpanIndex], idx: int
+    def append_modified_spans(
+        spans: frozenlist[SpanIndex], m: Modification
     ) -> frozenlist[SpanIndex]:
-        """Updates the last span with the new index if it is adjacent or creates a new span.
+        # If the modification is a deletion completely on top of an older
+        # modification it should be as if the older modification never existed.
+        reverting = m.new == "" and any(old == m.old_span_idx for old in spans)
+        if reverting:
+            spans = [old for old in spans if old != m.old_span_idx]
 
-        Args:
-            spans: Spans to update.
-            idx: New index to add.
+        new_spans = []
+        offset = m.new_span_idx.end - m.old_span_idx.end
+        new_span = m.new_span_idx
+        for old in spans:
+            # Modification after the old span. The old span is unchanged.
+            if old.end < m.old_span_idx.start:
+                new_spans.append(old)
+            # Modification before the old span. The old span must be shifted.
+            elif m.old_span_idx.end < old.start:
+                shifted = SpanIndex(old.start + offset, old.end + offset)
+                new_spans.append(shifted)
+            # Modification intersects the old span. The old span must be merged
+            # into the new span.
+            else:
+                new_start = min(old.start, new_span.start)
+                new_end = max(old.end + offset, new_span.end)
+                new_span = SpanIndex(new_start, new_end)
 
-        Returns:
-            Compressed spans.
-        """
-        if len(spans) == 0 or spans[-1].end != idx:
-            return spans.append(SpanIndex(idx, idx + 1))
-        last = spans[-1]
-        new_last = SpanIndex(last.start, last.end + 1)
-        return spans.replace(len(spans) - 1, new_last)
+        # Only add new span if not reverting
+        if not reverting:
+            new_spans.append(new_span)
 
-    return functools.reduce(compress_or_add_new_span, indices, frozenlist())
+        return frozenlist(sorted(new_spans))
+
+    return functools.reduce(append_modified_spans, t, frozenlist())

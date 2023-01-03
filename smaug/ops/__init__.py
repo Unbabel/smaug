@@ -5,9 +5,7 @@ from smaug.ops.modification import (
     reverse_modification,
     apply_modification_trace,
     reverse_modification_trace,
-    modified_indices_from_trace,
-    append_modified_indices,
-    compress_modified_indices,
+    modified_spans_from_trace,
 )
 from smaug.ops.sentence import (
     insert,
