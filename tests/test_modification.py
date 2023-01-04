@@ -1,9 +1,8 @@
-import itertools
 import pytest
 
 from smaug import frozen
 from smaug import ops
-from smaug.core import Modification, ModificationTrace, ModifiedIndices, SpanIndex
+from smaug.core import Modification, ModificationTrace, SpanIndex
 
 
 @pytest.mark.parametrize(
@@ -49,7 +48,7 @@ def test_modification(old: str, new: str, modification: Modification):
 
 
 @pytest.mark.parametrize(
-    "old,new,trace,expected_indices,expected_spans",
+    "old,new,trace,expected_spans",
     [
         pytest.param(
             'Original Sentence with "text to modify" and "more text to modify".',
@@ -58,7 +57,6 @@ def test_modification(old: str, new: str, modification: Modification):
                 Modification('"text to modify"', '"modified text"', 23),
                 Modification('"more text to modify"', '"more modifed text"', 43),
             ),
-            ModifiedIndices(itertools.chain(range(23, 38), range(43, 62))),
             frozen.frozenlist([SpanIndex(23, 38), SpanIndex(43, 62)]),
             id="No overlap",
         ),
@@ -70,7 +68,6 @@ def test_modification(old: str, new: str, modification: Modification):
                 Modification('"more text to modify"', '"more modifed text"', 43),
                 Modification('text" and "more', '"overlapped text"', 33),
             ),
-            ModifiedIndices(range(23, 64)),
             frozen.frozenlist([SpanIndex(23, 64)]),
             id="With overlap",
         ),
@@ -80,7 +77,6 @@ def test_modification_trace(
     old: str,
     new: str,
     trace: ModificationTrace,
-    expected_indices: ModifiedIndices,
     expected_spans: frozen.frozenlist[SpanIndex],
 ):
     new_output = ops.apply_modification_trace(trace, old)
@@ -88,10 +84,7 @@ def test_modification_trace(
     old_output = ops.reverse_modification_trace(trace, new_output)
     assert old == old_output
 
-    modified_indices = ops.modified_indices_from_trace(trace)
-    assert len(expected_indices) == len(modified_indices)
-
-    modified_spans = ops.compress_modified_indices(modified_indices)
+    modified_spans = ops.modified_spans_from_trace(trace)
     assert len(expected_spans) == len(modified_spans)
     for e, m in zip(expected_spans, modified_spans):
         assert e.start == m.start

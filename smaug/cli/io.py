@@ -129,7 +129,7 @@ def write_json(datasets, path, indent):
             if isinstance(o, frozen.frozenlist):
                 return list(o)
             if isinstance(o, SpanIndex):
-                return o.start, o.end
+                return int(o.start), int(o.end)
             if isinstance(o, Sentence):
                 return o.value
             return super().default(o)

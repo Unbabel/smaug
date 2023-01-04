@@ -109,20 +109,6 @@ class Modification:
         return SpanIndex(self.idx, self.idx + len(self.new))
 
 
-class ModifiedIndices:
-    def __init__(self, values: Iterable[int]) -> None:
-        self._idxs = sorted(set(values))
-
-    def __len__(self) -> int:
-        return len(self._idxs)
-
-    def __iter__(self):
-        return iter(self._idxs)
-
-    def __str__(self) -> str:
-        return f'{{{", ".join(str(i) for i in self._idxs)}}}'
-
-
 @dataclasses.dataclass(frozen=True)
 class ModificationTrace:
     """Stores the trace of multiple modifications in order."""
