@@ -1,4 +1,3 @@
-import dataclasses
 import functools
 import itertools
 import numpy as np
@@ -7,10 +6,10 @@ import re
 from smaug import _itertools
 from smaug import ops
 from smaug.broadcast import broadcast_data
-from smaug.core import Data, DataLike, Sentence, SentenceLike
-from smaug.promote import promote_to_data, promote_to_sentence
+from smaug.core import Data, DataLike, Sentence, SentenceLike, SpanIndex, SpanIndexLike
+from smaug.promote import promote_to_data, promote_to_sentence, promote_to_span_index
 
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Callable, Iterable, List, Optional
 
 MaskFunction = Callable[[int], str]
 """Retrieves the ith mask token given i.
@@ -29,74 +28,25 @@ Returns:
 """
 
 
-@dataclasses.dataclass(frozen=True, eq=True, order=True)
-class MaskingInterval:
-    """Specifies the start and end indexes to be masked in a given string."""
-
-    start: int
-    end: int
-
-    def __post_init__(self):
-        if self.start < 0:
-            raise ValueError(f"'start' must be positive but is {self.start}.")
-        if self.end < 0:
-            raise ValueError(f"'end' must be positive but is {self.end}.")
-        if self.end < self.start:
-            msg = f"'end' must be greater or equal to 'start': start={self.start}, end={self.end}"
-            raise ValueError(msg)
-
-    def encloses(self, other: "MaskingInterval") -> bool:
-        """Verifies whether this interval totally encloses the other.
-
-        If an interval A encloses and Interval B, then:
-        A.start  B.start   B.end    A.end
-        ---|--------|--------|--------|---
-        """
-        return self.start <= other.start <= other.end <= self.end
-
-    def partial_overlaps(self, other: "MaskingInterval") -> bool:
-        """Verifies whether this interval partially overlaps the other.
-
-        If an interval A partially overlaps Interval B, then:
-        A.start  B.start   A.end    B.end
-        ---|--------|--------|--------|---
-        or
-        B.start  A.start   B.end    A.end
-        ---|--------|--------|--------|---
-        """
-        return (
-            self.start <= other.start <= self.end <= other.end
-            or other.start <= self.start <= other.end <= self.end
-        )
-
-    def intersects(self, other: "MaskingInterval") -> bool:
-        return (
-            self.encloses(other)
-            or other.encloses(self)
-            or self.partial_overlaps(other)
-            or other.partial_overlaps(self)
-        )
-
-
-class MaskingIntervals:
+class MaskSpanIndexes:
     """Specifies all masking intervals to be masked in a given string."""
 
-    def __init__(self, *intervals: MaskingInterval) -> None:
-        self._intervals = list(_itertools.unique_everseen(intervals))
+    def __init__(self, *spans: SpanIndexLike) -> None:
+        spans = (promote_to_span_index(s) for s in spans)
+        self._intervals = list(_itertools.unique_everseen(spans))
 
         for i1, i2 in itertools.combinations(self._intervals, 2):
             if i1.intersects(i2):
                 raise ValueError(f"Intervals {i1} and {i2} intersect.")
 
-    def sorted(self, reverse: bool = False) -> "MaskingIntervals":
+    def sorted(self, reverse: bool = False) -> "MaskSpanIndexes":
         new_intervals = list(self._intervals)
         new_intervals.sort(reverse=reverse)
-        return MaskingIntervals(*new_intervals)
+        return MaskSpanIndexes(*new_intervals)
 
     @classmethod
-    def from_list(cls, intervals: List[Tuple[int, int]]) -> "MaskingIntervals":
-        mapped = (MaskingInterval(s, e) for s, e in intervals)
-        return cls(*mapped)
+    def from_list(cls, intervals: List[SpanIndexLike]) -> "MaskSpanIndexes":
+        return cls(*intervals)
 
     def as_ndarray(self) -> np.ndarray:
         return np.array([(i.start, i.end) for i in self._intervals])
@@ -105,7 +55,7 @@ class MaskingIntervals:
         intervals_repr = ", ".join(f"({i.start}, {i.end})" for i in self._intervals)
         return f"MaskingIntervals({intervals_repr})"
 
-    def __getitem__(self, idx) -> MaskingInterval:
+    def __getitem__(self, idx) -> SpanIndex:
         return self._intervals[idx]
 
     def __len__(self):
@@ -114,7 +64,7 @@ class MaskingIntervals:
 
 def mask_intervals(
     text: DataLike[SentenceLike],
-    intervals: DataLike[MaskingIntervals],
+    intervals: DataLike[MaskSpanIndexes],
     func: MaskFunction,
 ) -> Data[Sentence]:
     """Masks a sentence according to intervals.
@@ -146,7 +96,7 @@ def mask_intervals(
 
 def _mask_sentence_intervals(
     sentence: Sentence,
-    intervals: MaskingIntervals,
+    intervals: MaskSpanIndexes,
     func: MaskFunction,
 ) -> Sentence:
 
@@ -232,10 +182,8 @@ def _mask_sentence_named_entities(
         if len(detected_entities) > max_masks:
             detected_entities = rng.choice(detected_entities, max_masks, replace=False)
 
-    intervals_iter = (
-        MaskingInterval(ent.start_char, ent.end_char) for ent in detected_entities
-    )
-    return mask_intervals(text, MaskingIntervals(*intervals_iter), mask_func).item()
+    intervals_iter = ((ent.start_char, ent.end_char) for ent in detected_entities)
+    return mask_intervals(text, MaskSpanIndexes(*intervals_iter), mask_func).item()
 
 
 _DEFAULT_NUMBERS_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")
@@ -306,8 +254,8 @@ def _mask_sentence_regex(
         matches = list(matches)
         if len(matches) > max_masks:
             matches = rng.choice(matches, max_masks, replace=False)
-    intervals_iter = (MaskingInterval(*m.span()) for m in matches)
-    return mask_intervals(text, MaskingIntervals(*intervals_iter), func).item()
+    intervals_iter = (m.span() for m in matches)
+    return mask_intervals(text, MaskSpanIndexes(*intervals_iter), func).item()
 
 
 def mask_random_replace(

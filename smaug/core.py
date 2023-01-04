@@ -1,8 +1,7 @@
 import dataclasses
 
-from typing import Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Iterator, List, Optional, Tuple, TypeVar, Union
 
-from smaug import _itertools
 from smaug import frozen
 
 T = TypeVar("T")
