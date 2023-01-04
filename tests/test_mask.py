@@ -10,28 +10,28 @@ from smaug.ops import mask
     [
         pytest.param(
             "Test string with some words",
-            mask.MaskingIntervals.from_list([(0, 4), (10, 15)]),
+            mask.MaskSpanIndexes.from_list([(0, 4), (10, 15)]),
             lambda _: "<mask>",
             core.Data(["<mask> strin<mask>h some words"]),
             id="single sentence with string mask",
         ),
         pytest.param(
             ["Test string with some words", "2nd string to mask."],
-            mask.MaskingIntervals.from_list([(0, 4), (10, 15)]),
+            mask.MaskSpanIndexes.from_list([(0, 4), (10, 15)]),
             lambda _: "<mask>",
             core.Data(["<mask> strin<mask>h some words", "<mask>string<mask>ask."]),
             id="multiple sentences with string mask",
         ),
         pytest.param(
             "Test string with some words",
-            mask.MaskingIntervals.from_list([(0, 4), (10, 15)]),
+            mask.MaskSpanIndexes.from_list([(0, 4), (10, 15)]),
             lambda idx: f"<mask-{idx}>",
             core.Data(["<mask-0> strin<mask-1>h some words"]),
             id="single sentence with masking function",
         ),
         pytest.param(
             ["Test string with some words", "2nd string to mask."],
-            mask.MaskingIntervals.from_list([(0, 4), (10, 15)]),
+            mask.MaskSpanIndexes.from_list([(0, 4), (10, 15)]),
             lambda idx: f"<mask-{idx}>",
             core.Data(
                 ["<mask-0> strin<mask-1>h some words", "<mask-0>string<mask-1>ask."]
