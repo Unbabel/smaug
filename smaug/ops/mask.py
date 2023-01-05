@@ -1,15 +1,14 @@
 import functools
-import itertools
 import numpy as np
 import re
 
-from smaug import _itertools
 from smaug import ops
 from smaug.broadcast import broadcast_data
-from smaug.core import Data, DataLike, Sentence, SentenceLike, SpanIndex, SpanIndexLike
+from smaug.core import Data, DataLike, Sentence, SentenceLike, SpanIndexLike
+from smaug.frozen import frozenlist
 from smaug.promote import promote_to_data, promote_to_sentence, promote_to_span_index
 
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, Optional
 
 MaskFunction = Callable[[int], str]
 """Retrieves the ith mask token given i.
@@ -28,43 +27,9 @@ Returns:
 """
 
 
-class MaskSpanIndexes:
-    """Specifies all masking intervals to be masked in a given string."""
-
-    def __init__(self, *spans: SpanIndexLike) -> None:
-        spans = (promote_to_span_index(s) for s in spans)
-        self._intervals = list(_itertools.unique_everseen(spans))
-
-        for i1, i2 in itertools.combinations(self._intervals, 2):
-            if i1.intersects(i2):
-                raise ValueError(f"Intervals {i1} and {i2} intersect.")
-
-    def sorted(self, reverse: bool = False) -> "MaskSpanIndexes":
-        new_intervals = list(self._intervals)
-        new_intervals.sort(reverse=reverse)
-        return MaskSpanIndexes(*new_intervals)
-
-    @classmethod
-    def from_list(cls, intervals: List[SpanIndexLike]) -> "MaskSpanIndexes":
-        return cls(*intervals)
-
-    def as_ndarray(self) -> np.ndarray:
-        return np.array([(i.start, i.end) for i in self._intervals])
-
-    def __repr__(self) -> str:
-        intervals_repr = ", ".join(f"({i.start}, {i.end})" for i in self._intervals)
-        return f"MaskingIntervals({intervals_repr})"
-
-    def __getitem__(self, idx) -> SpanIndex:
-        return self._intervals[idx]
-
-    def __len__(self):
-        return len(self._intervals)
-
-
 def mask_intervals(
     text: DataLike[SentenceLike],
-    intervals: DataLike[MaskSpanIndexes],
+    intervals: DataLike[frozenlist[SpanIndexLike]],
     func: MaskFunction,
 ) -> Data[Sentence]:
     """Masks a sentence according to intervals.
@@ -96,7 +61,7 @@ def mask_intervals(
 
 def _mask_sentence_intervals(
     sentence: Sentence,
-    intervals: MaskSpanIndexes,
+    intervals: frozenlist[SpanIndexLike],
     func: MaskFunction,
 ) -> Sentence:
 
@@ -107,9 +72,10 @@ def _mask_sentence_intervals(
     # Go through intervals in reverse order as modifying
     # the sentence shifts all intervals greater than the
     # current.
-    for interval in intervals.sorted(reverse=True):
+    for interval in sorted(intervals, reverse=True):
         mask = func(mask_idx)
-        sentence = ops.replace(sentence, mask, (interval.start, interval.end))
+        span_index = promote_to_span_index(interval)
+        sentence = ops.replace(sentence, mask, span_index)
         mask_idx -= 1
 
     return sentence
@@ -182,8 +148,8 @@ def _mask_sentence_named_entities(
         if len(detected_entities) > max_masks:
             detected_entities = rng.choice(detected_entities, max_masks, replace=False)
 
-    intervals_iter = ((ent.start_char, ent.end_char) for ent in detected_entities)
-    return mask_intervals(text, MaskSpanIndexes(*intervals_iter), mask_func).item()
+    intervals_iter = [(ent.start_char, ent.end_char) for ent in detected_entities]
+    return mask_intervals(text, [frozenlist(intervals_iter)], mask_func).item()
 
 
 _DEFAULT_NUMBERS_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")
@@ -254,8 +220,8 @@ def _mask_sentence_regex(
         matches = list(matches)
         if len(matches) > max_masks:
             matches = rng.choice(matches, max_masks, replace=False)
-    intervals_iter = (m.span() for m in matches)
-    return mask_intervals(text, MaskSpanIndexes(*intervals_iter), func).item()
+    intervals_iter = [m.span() for m in matches]
+    return mask_intervals(text, [frozenlist(intervals_iter)], func).item()
 
 
 def mask_random_replace(

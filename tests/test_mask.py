@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from smaug import core
+from smaug.frozen import frozenlist
 from smaug.ops import mask
 
 
@@ -10,28 +11,28 @@ from smaug.ops import mask
     [
         pytest.param(
             "Test string with some words",
-            mask.MaskSpanIndexes.from_list([(0, 4), (10, 15)]),
+            [frozenlist([(0, 4), (10, 15)])],
             lambda _: "<mask>",
             core.Data(["<mask> strin<mask>h some words"]),
             id="single sentence with string mask",
         ),
         pytest.param(
             ["Test string with some words", "2nd string to mask."],
-            mask.MaskSpanIndexes.from_list([(0, 4), (10, 15)]),
+            [frozenlist([(0, 4), (10, 15)])],
             lambda _: "<mask>",
             core.Data(["<mask> strin<mask>h some words", "<mask>string<mask>ask."]),
             id="multiple sentences with string mask",
         ),
         pytest.param(
             "Test string with some words",
-            mask.MaskSpanIndexes.from_list([(0, 4), (10, 15)]),
+            [frozenlist([(0, 4), (10, 15)])],
             lambda idx: f"<mask-{idx}>",
             core.Data(["<mask-0> strin<mask-1>h some words"]),
             id="single sentence with masking function",
         ),
         pytest.param(
             ["Test string with some words", "2nd string to mask."],
-            mask.MaskSpanIndexes.from_list([(0, 4), (10, 15)]),
+            [frozenlist([(0, 4), (10, 15)])],
             lambda idx: f"<mask-{idx}>",
             core.Data(
                 ["<mask-0> strin<mask-1>h some words", "<mask-0>string<mask-1>ask."]
