@@ -3,10 +3,12 @@ import nltk.metrics
 import re
 import torch
 
-from typing import Callable
+from typing import Callable, Tuple
 
+from smaug import ops
 from smaug import pipeline
 from smaug.core import Data, DataLike, SentenceLike
+from smaug.frozen import frozenlist
 from smaug.promote import promote_to_data, promote_to_sentence
 
 
@@ -34,7 +36,7 @@ def not_equal(
 def equal_named_entites_count(
     records: DataLike[pipeline.State],
     perturbation: str,
-    ner_func: Callable[[DataLike[SentenceLike]], Data],
+    ner_func: Callable[[DataLike[SentenceLike]], Data[frozenlist[Tuple[int, int]]]],
 ) -> Data[pipeline.State]:
     """Filters records that do not have the same named entity count.
 
@@ -48,14 +50,11 @@ def equal_named_entites_count(
     """
 
     def val_func(original: SentenceLike, perturbed: SentenceLike) -> bool:
-        orig_entity_count = len(ner_func(original).item().entities)
-        pert_entity_count = len(ner_func(perturbed).item().entities)
+        orig_entity_count = len(ner_func(original).item())
+        pert_entity_count = len(ner_func(perturbed).item())
         return orig_entity_count == pert_entity_count
 
     return _validate_with_func(records, perturbation, val_func)
-
-
-_NUM_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")
 
 
 def equal_numbers_count(
@@ -71,11 +70,9 @@ def equal_numbers_count(
         Validated records.
     """
 
-    def cmp_func(original: SentenceLike, perturbed: SentenceLike) -> bool:
-        o = promote_to_sentence(original)
-        p = promote_to_sentence(perturbed)
-        orig_count = len(_NUM_REGEX.findall(o.value))
-        crit_count = len(_NUM_REGEX.findall(p.value))
+    def cmp_func(o: SentenceLike, p: SentenceLike) -> bool:
+        orig_count = len(ops.regex_detect_numbers(o).item())
+        crit_count = len(ops.regex_detect_numbers(p).item())
         return orig_count == crit_count
 
     return _validate_with_func(records, perturbation, cmp_func)

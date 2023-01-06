@@ -1,12 +1,12 @@
 import click
 import functools
 
+import smaug.models.stanza
 from smaug import models
 from smaug import random
 from smaug import transform
+from smaug import ops
 from smaug.ops import lang_model
-from smaug.ops import mask
-from smaug.ops import ner
 from smaug.ops import text_generation
 from smaug.cli import accelerator
 from smaug.cli import fmt
@@ -68,8 +68,9 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
     rng = random.numpy_seeded_rng()
 
     mask_func = functools.partial(
-        mask.mask_numbers,
-        func=lang_model.mT5_masking_function,
+        ops.mask_detections,
+        detect_func=ops.regex_detect_numbers,
+        mask_func=lang_model.mT5_masking_function,
         rng=rng,
         max_masks=1,
     )
@@ -144,7 +145,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
     total_records = sum(
         len(dataset["records"])
         for dataset in datasets
-        if ner.stanza_ner_lang_available(dataset["lang"])
+        if smaug.models.stanza.stanza_ner_lang_available(dataset["lang"])
     )
     if total_records == 0:
         click.echo(fmt.no_records_message("Swap a Named Entitiy for Text"))
@@ -165,14 +166,17 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
     pbar = fmt.pbar_from_total(total_records, "Swap a Named Entitiy for Text")
     for dataset in datasets:
         lang = dataset["lang"]
-        if not ner.stanza_ner_lang_available(lang):
+        if not smaug.models.stanza.stanza_ner_lang_available(lang):
             processed.append(dataset)
             continue
         ner_pipeline = models.stanza_ner_load(lang, gpu)
-        ner_func = functools.partial(ner.stanza_ner, ner_pipeline=ner_pipeline)
+        ner_func = functools.partial(
+            ops.stanza_detect_named_entities,
+            ner_pipeline=ner_pipeline,
+        )
         mask_func = functools.partial(
-            mask.mask_named_entities,
-            ner_func=ner_func,
+            ops.mask_detections,
+            detect_func=ner_func,
             mask_func=lang_model.mT5_masking_function,
             rng=rng,
             max_masks=1,
@@ -379,7 +383,7 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
     gpu = accelerator.use_gpu(no_gpu)
     rng = random.numpy_seeded_rng()
     mask_func = functools.partial(
-        mask.mask_random_insert,
+        ops.mask_random_insert,
         func=lang_model.mT5_masking_function,
         rng=rng,
         p=prob,
@@ -453,7 +457,7 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
     gpu = accelerator.use_gpu(no_gpu)
     rng = random.numpy_seeded_rng()
     mask_func = functools.partial(
-        mask.mask_poisson_spans,
+        ops.mask_poisson_spans,
         func=lang_model.mT5_masking_function,
         rng=rng,
     )

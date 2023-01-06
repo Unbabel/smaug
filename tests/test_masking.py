@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from smaug import core
+from smaug.core import Data
 from smaug.frozen import frozenlist
-from smaug.ops import mask
+from smaug import ops
 
 
 @pytest.mark.parametrize(
@@ -13,100 +13,104 @@ from smaug.ops import mask
             "Test string with some words",
             [frozenlist([(0, 4), (10, 15)])],
             lambda _: "<mask>",
-            core.Data(["<mask> strin<mask>h some words"]),
+            Data(["<mask> strin<mask>h some words"]),
             id="single sentence with string mask",
         ),
         pytest.param(
             ["Test string with some words", "2nd string to mask."],
             [frozenlist([(0, 4), (10, 15)])],
             lambda _: "<mask>",
-            core.Data(["<mask> strin<mask>h some words", "<mask>string<mask>ask."]),
+            Data(["<mask> strin<mask>h some words", "<mask>string<mask>ask."]),
             id="multiple sentences with string mask",
         ),
         pytest.param(
             "Test string with some words",
             [frozenlist([(0, 4), (10, 15)])],
             lambda idx: f"<mask-{idx}>",
-            core.Data(["<mask-0> strin<mask-1>h some words"]),
+            Data(["<mask-0> strin<mask-1>h some words"]),
             id="single sentence with masking function",
         ),
         pytest.param(
             ["Test string with some words", "2nd string to mask."],
             [frozenlist([(0, 4), (10, 15)])],
             lambda idx: f"<mask-{idx}>",
-            core.Data(
-                ["<mask-0> strin<mask-1>h some words", "<mask-0>string<mask-1>ask."]
-            ),
+            Data(["<mask-0> strin<mask-1>h some words", "<mask-0>string<mask-1>ask."]),
             id="multiple sentences with masking function",
         ),
     ],
 )
 def test_mask_intervals(docs, intervals, func, expected):
-    output = mask.mask_intervals(docs, intervals, func)
-    assert isinstance(output, core.Data)
+    output = ops.mask_intervals(docs, intervals, func)
+    assert isinstance(output, Data)
     assert len(expected) == len(output)
     for e, p in zip(expected, output):
         assert e == p.value
 
 
 @pytest.mark.parametrize(
-    "text,func,expected",
+    "text,detect_func,mask_func,expected",
     [
         pytest.param(
             "Test with 1.23,22 number and another 1.220.",
+            lambda _: Data([frozenlist([(10, 17), (37, 42)])]),
             lambda _: "<mask>",
-            core.Data(["Test with <mask> number and another <mask>."]),
+            Data(["Test with <mask> number and another <mask>."]),
             id="single sentence with string mask",
         ),
         pytest.param(
             "Test with .21234 number and another 2312234.",
+            lambda _: Data([frozenlist([(10, 16), (36, 43)])]),
             lambda idx: f"<mask-{idx}>",
-            core.Data(["Test with <mask-0> number and another <mask-1>."]),
+            Data(["Test with <mask-0> number and another <mask-1>."]),
             id="single sentence with masking function",
         ),
     ],
 )
-def test_number_mask(text, func, expected):
-    output = mask.mask_numbers(text, func, np.random.default_rng())
-    assert isinstance(output, core.Data)
+def test_mask_detections(text, detect_func, mask_func, expected):
+    output = ops.mask_detections(text, detect_func, mask_func, np.random.default_rng())
+    assert isinstance(output, Data)
     assert len(expected) == len(output)
     for e, p in zip(expected, output):
         assert e == p.value
 
 
 @pytest.mark.parametrize(
-    "text,func,expected_opts",
+    "text,detect_func,mask_func,expected_opts",
     [
         pytest.param(
             "Test with 1.23,22 number and another 1.220.",
+            lambda _: Data([frozenlist([(10, 17), (37, 42)])]),
             lambda _: "<mask>",
             [
-                core.Data(["Test with <mask> number and another 1.220."]),
-                core.Data(["Test with 1.23,22 number and another <mask>."]),
+                Data(["Test with <mask> number and another 1.220."]),
+                Data(["Test with 1.23,22 number and another <mask>."]),
             ],
             id="single sentence with string mask",
         ),
         pytest.param(
-            "Test with .21234 number and another 1.220.",
+            "Test with .21234 number and another 2312234.",
+            lambda _: Data([frozenlist([(10, 16), (36, 43)])]),
             lambda idx: f"<mask-{idx}>",
             [
-                core.Data(["Test with <mask-0> number and another 1.220."]),
-                core.Data(["Test with .21234 number and another <mask-0>."]),
+                Data(["Test with <mask-0> number and another 2312234."]),
+                Data(["Test with .21234 number and another <mask-0>."]),
             ],
             id="single sentence with masking function",
         ),
     ],
 )
-def test_number_mask_max(text, func, expected_opts):
-    def matches_func(expected, output):
+def test_mask_detections_max_masks(text, detect_func, mask_func, expected_opts):
+    def matches_func(expected):
         return (
-            isinstance(output, core.Data)
+            isinstance(output, Data)
             and len(expected) == len(output)
             and all(e == p.value for e, p in zip(expected, output))
         )
 
-    output = mask.mask_numbers(text, func, np.random.default_rng(), max_masks=1)
-    assert any(matches_func(e, output) for e in expected_opts)
+    output = ops.mask_detections(
+        text, detect_func, mask_func, np.random.default_rng(), max_masks=1
+    )
+    assert any(matches_func(e) for e in expected_opts)
 
 
 @pytest.mark.parametrize(
@@ -125,9 +129,9 @@ def test_number_mask_max(text, func, expected_opts):
     ],
 )
 def test_random_replace_mask(text: str, func):
-    output = mask.mask_random_replace(text, func, np.random.default_rng(), p=0.5)
+    output = ops.mask_random_replace(text, func, np.random.default_rng(), p=0.5)
     t_splits = text.split()
-    assert isinstance(output, core.Data)
+    assert isinstance(output, Data)
     assert len(output) == 1
     o_splits = output.item().value.split()
     assert len(t_splits) == len(o_splits)
@@ -162,8 +166,8 @@ def test_mask_poisson_spans(text: str, func):
                 return i
         return -1
 
-    output = mask.mask_poisson_spans(text, func, np.random.default_rng())
-    assert isinstance(output, core.Data)
+    output = ops.mask_poisson_spans(text, func, np.random.default_rng())
+    assert isinstance(output, Data)
     assert len(output) == 1
 
     o_splits = output.item().value.split()
@@ -216,9 +220,9 @@ def test_mask_poisson_spans(text: str, func):
     ],
 )
 def test_random_insert_mask(text, func):
-    output = mask.mask_random_insert(text, func, np.random.default_rng(), p=0.5)
+    output = ops.mask_random_insert(text, func, np.random.default_rng(), p=0.5)
 
-    assert isinstance(output, core.Data)
+    assert isinstance(output, Data)
     assert len(output) == 1
     t_splits = text.split()
     o_splits = output.item().value.split()

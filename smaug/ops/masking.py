@@ -1,6 +1,6 @@
 import functools
 import numpy as np
-import re
+
 
 from smaug import ops
 from smaug.broadcast import broadcast_data
@@ -8,7 +8,7 @@ from smaug.core import Data, DataLike, Sentence, SentenceLike, SpanIndexLike
 from smaug.frozen import frozenlist
 from smaug.promote import promote_to_data, promote_to_sentence, promote_to_span_index
 
-from typing import Callable, Iterable, Optional
+from typing import Callable, Optional, Tuple
 
 MaskFunction = Callable[[int], str]
 """Retrieves the ith mask token given i.
@@ -81,37 +81,34 @@ def _mask_sentence_intervals(
     return sentence
 
 
-def mask_named_entities(
+def mask_detections(
     text: DataLike[SentenceLike],
-    ner_func: Callable[[DataLike[SentenceLike]], Data],
+    detect_func: Callable[[DataLike[SentenceLike]], Data[frozenlist[Tuple[int, int]]]],
     mask_func: MaskFunction,
     rng: np.random.Generator,
-    filter_entities: Optional[Iterable[str]] = None,
     p: float = 1,
     max_masks: Optional[int] = None,
 ) -> Data[Sentence]:
-    """Masks the named entities in a given text.
+    """Masks the detected spans in a given text.
 
     Args:
         text: Text to apply the masks.
-        ner_func: Function to detect named entities.
+        detect_func: Function to detect possible spans to mask.
         mask_func: Masking function to apply.
         rng: Numpy random generator to use.
-        filter_entities: Named entity tags to consider.
-        p: Probability of applying a mask to a given named entity.
+        p: Probability of applying a mask to a given detection.
         max_masks: Maximum masks to apply. If not specified all
-        found named entities will be masked.
+        detections will be masked.
 
     Returns:
         Masked text.
     """
     text = promote_to_data(text)
     mask_sentence_func = functools.partial(
-        _mask_sentence_named_entities,
-        ner_func=ner_func,
+        _mask_sentence_detections,
+        detect_func=detect_func,
         mask_func=mask_func,
         rng=rng,
-        filter_entities=filter_entities,
         p=p,
         max_masks=max_masks,
     )
@@ -119,109 +116,28 @@ def mask_named_entities(
     return Data(mask_sentence_func(s) for s in sentences)
 
 
-def _mask_sentence_named_entities(
+def _mask_sentence_detections(
     text: Sentence,
-    ner_func: Callable[[DataLike[SentenceLike]], Data],
+    detect_func: Callable[[DataLike[SentenceLike]], Data[frozenlist[Tuple[int, int]]]],
     mask_func: MaskFunction,
     rng: np.random.Generator,
-    filter_entities: Optional[Iterable[str]] = None,
     p: float = 1,
     max_masks: Optional[int] = None,
 ) -> Sentence:
     if p == 0:
         return text
 
-    # No filter
-    filter_entities_func = lambda ent: True
-    if filter_entities is not None:
-        unique_entities = set(filter_entities)
-        filter_entities_func = lambda ent: ent.type in unique_entities
+    detections = detect_func(text).item()
 
-    text_w_ner = ner_func(text).item()
-
-    detected_entities = filter(filter_entities_func, text_w_ner.entities)
     if p != 1:
-        detected_entities = filter(lambda _: rng.random() <= p, detected_entities)
+        detections = filter(lambda _: rng.random() < p, detections)
 
     if max_masks:
-        detected_entities = list(detected_entities)
-        if len(detected_entities) > max_masks:
-            detected_entities = rng.choice(detected_entities, max_masks, replace=False)
+        detections = list(detections)
+        if len(detections) > max_masks:
+            detections = rng.choice(detections, max_masks, replace=False)
 
-    intervals_iter = [(ent.start_char, ent.end_char) for ent in detected_entities]
-    return mask_intervals(text, [frozenlist(intervals_iter)], mask_func).item()
-
-
-_DEFAULT_NUMBERS_REGEX = re.compile(r"[-+]?\.?(\d+[.,])*\d+")
-
-
-def mask_numbers(
-    text: DataLike[SentenceLike],
-    func: MaskFunction,
-    rng: np.random.Generator,
-    max_masks: Optional[int] = None,
-) -> Data[Sentence]:
-    """Masks the numbers in a given sentence according to regular expressions.
-
-    Args:
-        text: Text to apply the masks.
-        func: Masking function to apply.
-        rng: Numpy random generator to use.
-        max_masks: Maximum masks to apply. If not specified all regular
-        expression matches will be masked.
-
-    Returns:
-        Masked text.
-    """
-    return mask_regex(text, func, _DEFAULT_NUMBERS_REGEX, rng, max_masks)
-
-
-def mask_regex(
-    text: DataLike[SentenceLike],
-    func: MaskFunction,
-    regex: re.Pattern,
-    rng: np.random.Generator,
-    max_masks: Optional[int] = None,
-) -> Data[Sentence]:
-    """Masks text spans that match a given regular expression.
-
-    Args:
-        text: Text to apply the masks.
-        func: Masking function to apply.
-        regex: Regular expression to match.
-        rng: Numpy random generator to use.
-        max_masks: Maximum masks to apply. If not specified all
-        regular expression matches will be masked.
-
-    Returns:
-        Masked text.
-    """
-    text = promote_to_data(text)
-    mask_sentence_func = functools.partial(
-        _mask_sentence_regex,
-        func=func,
-        regex=regex,
-        rng=rng,
-        max_masks=max_masks,
-    )
-    sentences = map(promote_to_sentence, text)
-    return Data(mask_sentence_func(s) for s in sentences)
-
-
-def _mask_sentence_regex(
-    text: Sentence,
-    func: MaskFunction,
-    regex: re.Pattern,
-    rng: np.random.Generator,
-    max_masks: Optional[int] = None,
-) -> Sentence:
-    matches = regex.finditer(text.value)
-    if max_masks:
-        matches = list(matches)
-        if len(matches) > max_masks:
-            matches = rng.choice(matches, max_masks, replace=False)
-    intervals_iter = [m.span() for m in matches]
-    return mask_intervals(text, [frozenlist(intervals_iter)], func).item()
+    return mask_intervals(text, [frozenlist(detections)], mask_func).item()
 
 
 def mask_random_replace(

@@ -91,6 +91,9 @@ class frozenlist(collections.abc.Sequence[_T], Generic[_T]):
         lines = "".join(f"\t{v},\n" for v in values)
         return f"frozenlist([\n{lines}])"
 
+    def __eq__(self, other):
+        return isinstance(other, frozenlist) and self._list == other._list
+
     def _copy_and_apply(self, func: Callable[[list], None]) -> "frozenlist[_T]":
         new_list = list(self._list)
         func(new_list)

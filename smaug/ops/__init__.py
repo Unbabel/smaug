@@ -18,4 +18,16 @@ from smaug.ops.sentence import (
     startswith,
     endswith,
 )
+from smaug.ops.detection import (
+    stanza_detect_named_entities,
+    regex_detect_matches,
+    regex_detect_numbers,
+)
 from smaug.ops.pos_tagging import stanza_pos_predict
+from smaug.ops.masking import (
+    mask_intervals,
+    mask_detections,
+    mask_random_replace,
+    mask_random_insert,
+    mask_poisson_spans,
+)
