@@ -2,8 +2,9 @@ import click
 import functools
 import re
 
+import smaug.models.stanza
 from smaug import models
-from smaug.ops import ner
+from smaug import ops
 from smaug.ops import nli
 from smaug import validation
 from smaug.cli import accelerator
@@ -236,7 +237,7 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
     total_records = sum(
         len(dataset["records"])
         for dataset in datasets
-        if ner.stanza_ner_lang_available(dataset["lang"])
+        if smaug.models.stanza.stanza_ner_lang_available(dataset["lang"])
     )
     if total_records == 0:
         click.echo(fmt.no_records_message("Keep Equal Named Entities Count"))
@@ -251,10 +252,13 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
         )
         for dataset in processed:
             lang = dataset["lang"]
-            if not ner.stanza_ner_lang_available(lang):
+            if not smaug.models.stanza.stanza_ner_lang_available(lang):
                 continue
             ner_pipeline = models.stanza_ner_load(lang, gpu)
-            ner_func = functools.partial(ner.stanza_ner, ner_pipeline=ner_pipeline)
+            ner_func = functools.partial(
+                ops.stanza_detect_named_entities,
+                ner_pipeline=ner_pipeline,
+            )
             val_func = functools.partial(
                 validation.equal_named_entites_count,
                 perturbation=transform,
