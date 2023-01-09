@@ -62,9 +62,9 @@ def mT5_masking_function(idx: int):
 def _mT5_replace_masks(source: Sentence, output: str) -> Sentence:
     spans = _MASK_REGEX.split(output)[1:]
 
-    generated_spans = []
     mask_idx = 0
     for span in spans:
+        no_space_start = len(span) > 0 and span[0] != " "
         # Avoid bad escape char by replacing single \ with \\
         escaped_span = span.strip().replace("\\", "\\\\")
 
@@ -73,10 +73,13 @@ def _mT5_replace_masks(source: Sentence, output: str) -> Sentence:
 
         if pattern_match := re.search(mask, source.value):
             first_idx = pattern_match.start()
-            last_idx = first_idx + len(escaped_span)
-            generated_spans.append((first_idx, last_idx))
-
-            replace_span = (first_idx, first_idx + len(mask))
+            last_idx = first_idx + len(mask)
+            # If we are replacing by a span that does not start by a space,
+            # and there is a space before the mask then also remove that space
+            # (e.g. near <mask> -> nearly instead of near <mask> -> near ly)
+            if first_idx != 0 and source.value[first_idx-1] == " " and no_space_start:
+                first_idx -= 1
+            replace_span = (first_idx, last_idx)
             source = ops.replace(source, escaped_span, replace_span)
 
     return source
