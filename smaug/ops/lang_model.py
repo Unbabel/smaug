@@ -77,7 +77,7 @@ def _mT5_replace_masks(source: Sentence, output: str) -> Sentence:
             # If we are replacing by a span that does not start by a space,
             # and there is a space before the mask then also remove that space
             # (e.g. near <mask> -> nearly instead of near <mask> -> near ly)
-            if first_idx != 0 and source.value[first_idx-1] == " " and no_space_start:
+            if first_idx != 0 and source.value[first_idx - 1] == " " and no_space_start:
                 first_idx -= 1
             replace_span = (first_idx, last_idx)
             source = ops.replace(source, escaped_span, replace_span)
