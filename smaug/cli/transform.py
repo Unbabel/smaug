@@ -6,6 +6,7 @@ from smaug import models
 from smaug import random
 from smaug import transform
 from smaug import ops
+from smaug import perturb
 from smaug.ops import lang_model
 from smaug.ops import text_generation
 from smaug.cli import accelerator
@@ -67,23 +68,15 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 
     rng = random.numpy_seeded_rng()
 
-    mask_func = functools.partial(
-        ops.mask_detections,
-        detect_func=ops.regex_detect_numbers,
-        mask_func=lang_model.mT5_masking_function,
-        rng=rng,
-        max_masks=1,
-    )
     model, tokenizer = models.mT5_load()
-    mT5_func = functools.partial(
-        lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
-    )
 
-    transf_func = functools.partial(
-        transform.mask_and_fill,
-        perturbation=_SWAP_NUM_CMD,
-        mask_func=mask_func,
-        fill_func=mT5_func,
+    perturb_func = functools.partial(
+        perturb.perturb_swap_num,
+        mT5_model=model,
+        mT5_tokenizer=tokenizer,
+        rng=rng,
+        gpu=gpu,
+        default_validations=False,
     )
 
     processed = []
@@ -95,7 +88,7 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transf_func(batch)
+            records = perturb_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -157,9 +150,6 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
     rng = random.numpy_seeded_rng()
 
     model, tokenizer = models.mT5_load()
-    mT5_func = functools.partial(
-        lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
-    )
 
     processed = []
 
@@ -170,23 +160,15 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             processed.append(dataset)
             continue
         ner_pipeline = models.stanza_ner_load(lang, gpu)
-        ner_func = functools.partial(
-            ops.stanza_detect_named_entities,
-            ner_pipeline=ner_pipeline,
-        )
-        mask_func = functools.partial(
-            ops.mask_detections,
-            detect_func=ner_func,
-            mask_func=lang_model.mT5_masking_function,
-            rng=rng,
-            max_masks=1,
-        )
 
-        transf_func = functools.partial(
-            transform.mask_and_fill,
-            perturbation=_SWAP_NE_CMD,
-            mask_func=mask_func,
-            fill_func=mT5_func,
+        perturb_func = functools.partial(
+            perturb.perturb_swap_named_entity,
+            ner_pipeline=ner_pipeline,
+            mT5_model=model,
+            mT5_tokenizer=tokenizer,
+            rng=rng,
+            gpu=gpu,
+            default_validations=False,
         )
 
         old_records = dataset["records"]
@@ -194,7 +176,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transf_func(batch)
+            records = perturb_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 

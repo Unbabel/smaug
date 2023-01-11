@@ -31,3 +31,4 @@ from smaug.ops.masking import (
     mask_random_insert,
     mask_poisson_spans,
 )
+from smaug.ops.lang_model import mT5_generate, mT5_masking_function
