@@ -1,5 +1,5 @@
 import collections
-import nltk.metrics
+import nltk
 import re
 import torch
 
@@ -165,12 +165,12 @@ def geq_edit_distance(
     def char_val_func(original: SentenceLike, perturbed: SentenceLike) -> bool:
         o = promote_to_sentence(original)
         p = promote_to_sentence(perturbed)
-        return nltk.metrics.edit_distance(o.value, p.value) >= min_dist
+        return nltk.edit_distance(o.value, p.value) >= min_dist
 
     def word_val_func(original: SentenceLike, perturbed: SentenceLike) -> bool:
         o = promote_to_sentence(original)
         p = promote_to_sentence(perturbed)
-        return nltk.metrics.edit_distance(o.value.split(), p.value.split()) >= min_dist
+        return nltk.edit_distance(o.value.split(), p.value.split()) >= min_dist
 
     levels = ("char", "word")
     if level not in levels:
