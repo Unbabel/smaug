@@ -32,3 +32,5 @@ from smaug.ops.masking import (
     mask_poisson_spans,
 )
 from smaug.ops.lang_model import mT5_generate, mT5_masking_function
+from smaug.ops.nli import roberta_mnli_predict, roberta_mnli_contradiction_id
+from smaug.ops.text_generation import polyjuice_negate

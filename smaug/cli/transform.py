@@ -1,14 +1,12 @@
 import click
 import functools
 
-import smaug.models.stanza
 from smaug import models
 from smaug import random
 from smaug import transform
 from smaug import ops
 from smaug import perturb
 from smaug.ops import lang_model
-from smaug.ops import text_generation
 from smaug.cli import accelerator
 from smaug.cli import fmt
 from smaug.cli import processor
@@ -70,13 +68,12 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 
     model, tokenizer = models.mT5_load()
 
-    perturb_func = functools.partial(
-        perturb.perturb_swap_num,
-        mT5_model=model,
-        mT5_tokenizer=tokenizer,
+    transform_func = functools.partial(
+        perturb.swap_number_transform,
+        mt5_model=model,
+        mt5_tokenizer=tokenizer,
         rng=rng,
         gpu=gpu,
-        default_validations=False,
     )
 
     processed = []
@@ -88,7 +85,7 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = perturb_func(batch)
+            records = transform_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -138,7 +135,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
     total_records = sum(
         len(dataset["records"])
         for dataset in datasets
-        if smaug.models.stanza.stanza_ner_lang_available(dataset["lang"])
+        if models.stanza_ner_lang_available(dataset["lang"])
     )
     if total_records == 0:
         click.echo(fmt.no_records_message("Swap a Named Entitiy for Text"))
@@ -156,19 +153,18 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
     pbar = fmt.pbar_from_total(total_records, "Swap a Named Entitiy for Text")
     for dataset in datasets:
         lang = dataset["lang"]
-        if not smaug.models.stanza.stanza_ner_lang_available(lang):
+        if not models.stanza_ner_lang_available(lang):
             processed.append(dataset)
             continue
         ner_pipeline = models.stanza_ner_load(lang, gpu)
 
-        perturb_func = functools.partial(
-            perturb.perturb_swap_named_entity,
+        transform_func = functools.partial(
+            perturb.swap_named_entity_transform,
             ner_pipeline=ner_pipeline,
-            mT5_model=model,
-            mT5_tokenizer=tokenizer,
+            mt5_model=model,
+            mt5_tokenizer=tokenizer,
             rng=rng,
             gpu=gpu,
-            default_validations=False,
         )
 
         old_records = dataset["records"]
@@ -176,7 +172,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = perturb_func(batch)
+            records = transform_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -220,18 +216,14 @@ def negate(ctx, datasets, batch_size, no_gpu):
     rng = random.numpy_seeded_rng()
     pos_pipeline = models.stanza_pos_load("en", gpu)
     model, tokenizer = models.polyjuice_load()
-    neg_polyjuice = functools.partial(
-        text_generation.polyjuice_negate,
+
+    transform_func = functools.partial(
+        perturb.negate_transform,
         pos_pipeline=pos_pipeline,
-        model=model,
-        tokenizer=tokenizer,
+        polyjuice_model=model,
+        polyjuice_tokenizer=tokenizer,
         rng=rng,
-        cuda=gpu,
-    )
-    transf_func = functools.partial(
-        transform.negate,
-        perturbation=_NEG_CMD,
-        polyjuice_func=neg_polyjuice,
+        gpu=gpu,
     )
 
     pbar = fmt.pbar_from_total(total_records, "Negate the Sentence")
@@ -244,7 +236,7 @@ def negate(ctx, datasets, batch_size, no_gpu):
 
             for i in range(0, len(old_records), batch_size):
                 batch = old_records[i : i + batch_size]
-                records = transf_func(batch)
+                records = transform_func(batch)
                 new_records.extend(records)
                 pbar.update(len(batch))
 
@@ -297,11 +289,10 @@ def delete_punct_span(ctx, datasets, punct, low, high):
 
     ctx.obj.register_transform(_DEL_PUNCT_SPAN_CMD)
     rng = random.numpy_seeded_rng()
-    transf_func = functools.partial(
-        transform.punct_span_delete,
-        perturbation=_DEL_PUNCT_SPAN_CMD,
+    transform_func = functools.partial(
+        perturb.delete_span_between_punctuation_transform,
         rng=rng,
-        punct=punct,
+        punctuation=punct,
         low=low,
         high=high,
     )
@@ -313,7 +304,7 @@ def delete_punct_span(ctx, datasets, punct, low, high):
     )
     for dataset in datasets:
         old_records = dataset["records"]
-        dataset["records"] = transf_func(old_records)
+        dataset["records"] = transform_func(old_records)
 
         pbar.update(len(old_records))
 
@@ -364,24 +355,17 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
 
     gpu = accelerator.use_gpu(no_gpu)
     rng = random.numpy_seeded_rng()
-    mask_func = functools.partial(
-        ops.mask_random_insert,
-        func=lang_model.mT5_masking_function,
+
+    model, tokenizer = models.mT5_load()
+
+    transform_func = functools.partial(
+        perturb.insert_text_span_transform,
+        mt5_model=model,
+        mt5_tokenizer=tokenizer,
         rng=rng,
         p=prob,
         max_masks=max_masks,
-    )
-
-    model, tokenizer = models.mT5_load()
-    mT5_func = functools.partial(
-        lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
-    )
-
-    transf_func = functools.partial(
-        transform.mask_and_fill,
-        perturbation=_INS_TEXT_CMD,
-        mask_func=mask_func,
-        fill_func=mT5_func,
+        gpu=gpu,
     )
 
     processed = []
@@ -393,7 +377,7 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transf_func(batch)
+            records = transform_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -438,22 +422,15 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
 
     gpu = accelerator.use_gpu(no_gpu)
     rng = random.numpy_seeded_rng()
-    mask_func = functools.partial(
-        ops.mask_poisson_spans,
-        func=lang_model.mT5_masking_function,
-        rng=rng,
-    )
 
     model, tokenizer = models.mT5_load()
-    mT5_func = functools.partial(
-        lang_model.mT5_generate, model=model, tokenizer=tokenizer, cuda=gpu
-    )
 
-    transf_func = functools.partial(
-        transform.mask_and_fill,
-        perturbation=_SWAP_POISSON_SPAN_CMD,
-        mask_func=mask_func,
-        fill_func=mT5_func,
+    transform_func = functools.partial(
+        perturb.swap_poisson_span_transform,
+        mt5_model=model,
+        mt5_tokenizer=tokenizer,
+        rng=rng,
+        gpu=gpu,
     )
 
     processed = []
@@ -465,7 +442,7 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transf_func(batch)
+            records = transform_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
