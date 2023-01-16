@@ -7,7 +7,6 @@ import transformers
 from smaug import more_functools
 from smaug import pipeline
 from smaug import ops
-from smaug import transform
 from smaug import validation
 from smaug.core import Data, DataLike
 
@@ -54,36 +53,6 @@ def swap_number(
         gpu,
     )
     return swap_number_validation(transformed)
-
-
-def swap_number_transform(
-    records: DataLike[pipeline.State],
-    mt5_model: transformers.MT5ForConditionalGeneration,
-    mt5_tokenizer: transformers.T5Tokenizer,
-    rng: np.random.Generator,
-    gpu: bool = False,
-) -> Data[pipeline.State]:
-    mask_func = functools.partial(
-        ops.mask_detections,
-        detect_func=ops.regex_detect_numbers,
-        mask_func=ops.mT5_masking_function,
-        rng=rng,
-        max_masks=1,
-    )
-
-    fill_func = functools.partial(
-        ops.mT5_generate,
-        model=mt5_model,
-        tokenizer=mt5_tokenizer,
-        cuda=gpu,
-    )
-
-    return transform.mask_and_fill(
-        records,
-        perturbation=_SWP_NUM_PERTURBATION,
-        mask_func=mask_func,
-        fill_func=fill_func,
-    )
 
 
 def swap_number_validation(records: DataLike[pipeline.State]) -> Data[pipeline.State]:
@@ -153,39 +122,6 @@ def swap_named_entity(
     return swap_named_entity_validation(transformed, ner_pipeline)
 
 
-def swap_named_entity_transform(
-    records: DataLike[pipeline.State],
-    ner_pipeline: stanza.Pipeline,
-    mt5_model: transformers.MT5ForConditionalGeneration,
-    mt5_tokenizer: transformers.T5Tokenizer,
-    rng: np.random.Generator,
-    gpu: bool = False,
-) -> Data[pipeline.State]:
-    ner_func = functools.partial(
-        ops.stanza_detect_named_entities,
-        ner_pipeline=ner_pipeline,
-    )
-
-    mask_func = functools.partial(
-        ops.mask_detections,
-        detect_func=ner_func,
-        mask_func=ops.mT5_masking_function,
-        rng=rng,
-        max_masks=1,
-    )
-
-    fill_func = functools.partial(
-        ops.mT5_generate, model=mt5_model, tokenizer=mt5_tokenizer, cuda=gpu
-    )
-
-    return transform.mask_and_fill(
-        records,
-        _SWP_NE_PERTURBATION,
-        mask_func,
-        fill_func,
-    )
-
-
 def swap_named_entity_validation(
     records: DataLike[pipeline.State],
     ner_pipeline: stanza.Pipeline,
@@ -244,32 +180,6 @@ def swap_poisson_span(
     return swap_poisson_span_validation(transformed)
 
 
-def swap_poisson_span_transform(
-    records: DataLike[pipeline.State],
-    mt5_model: transformers.MT5ForConditionalGeneration,
-    mt5_tokenizer: transformers.T5Tokenizer,
-    rng: np.random.Generator,
-    gpu: bool = False,
-) -> Data[pipeline.State]:
-    mask_func = functools.partial(
-        ops.mask_poisson_spans,
-        func=ops.mT5_masking_function,
-        rng=rng,
-    )
-    fill_func = functools.partial(
-        ops.mT5_generate,
-        model=mt5_model,
-        tokenizer=mt5_tokenizer,
-        cuda=gpu,
-    )
-    return transform.mask_and_fill(
-        records,
-        _SWP_POISSON_SPAN_PERTURBATION,
-        mask_func,
-        fill_func,
-    )
-
-
 def swap_poisson_span_validation(
     records: DataLike[pipeline.State],
 ) -> Data[pipeline.State]:
@@ -317,31 +227,6 @@ def negate(
         gpu,
     )
     return negate_validation(transformed, roberta_model, roberta_tokenizer, gpu)
-
-
-def negate_transform(
-    records: DataLike[pipeline.State],
-    pos_pipeline: stanza.Pipeline,
-    polyjuice_model: transformers.AutoModelForCausalLM,
-    polyjuice_tokenizer: transformers.PreTrainedTokenizerBase,
-    rng: np.random.Generator,
-    gpu: bool = False,
-) -> Data[pipeline.State]:
-    neg_polyjuice = functools.partial(
-        ops.polyjuice_negate,
-        pos_pipeline=pos_pipeline,
-        model=polyjuice_model,
-        tokenizer=polyjuice_tokenizer,
-        rng=rng,
-        cuda=gpu,
-    )
-    transform_func = functools.partial(
-        transform.negate,
-        perturbation=_NEG_PERTURBATION,
-        polyjuice_func=neg_polyjuice,
-    )
-
-    return transform_func(records)
 
 
 def negate_validation(
@@ -404,35 +289,6 @@ def insert_text_span(
     return insert_text_span_validation(transformed)
 
 
-def insert_text_span_transform(
-    records: DataLike[pipeline.State],
-    mt5_model: transformers.MT5ForConditionalGeneration,
-    mt5_tokenizer: transformers.T5Tokenizer,
-    rng: np.random.Generator,
-    p: float = 0.1,
-    max_masks: int = 3,
-    gpu: bool = False,
-) -> Data[pipeline.State]:
-    mask_func = functools.partial(
-        ops.mask_random_insert,
-        func=ops.mT5_masking_function,
-        rng=rng,
-        p=p,
-        max_masks=max_masks,
-    )
-
-    fill_func = functools.partial(
-        ops.mT5_generate, model=mt5_model, tokenizer=mt5_tokenizer, cuda=gpu
-    )
-
-    return transform.mask_and_fill(
-        records,
-        _INS_TEXT_SPAN_PERTURBATION,
-        mask_func,
-        fill_func,
-    )
-
-
 def insert_text_span_validation(
     records: DataLike[pipeline.State],
 ) -> Data[pipeline.State]:
@@ -459,15 +315,3 @@ def insert_text_span_validation(
         rm_masks_func,
         rm_symbols_insertion_func,
     )(records)
-
-
-def delete_span_between_punctuation_transform(
-    records: DataLike[pipeline.State],
-    rng: np.random.Generator,
-    punctuation: str = ",.!?",
-    low: int = 4,
-    high: int = 10,
-) -> Data[pipeline.State]:
-    return transform.punct_span_delete(
-        records, _DEL_PUNCTUATION_SPAN_PERTURBATION, rng, punctuation, low, high
-    )

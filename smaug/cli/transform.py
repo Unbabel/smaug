@@ -3,10 +3,8 @@ import functools
 
 from smaug import models
 from smaug import random
-from smaug import transform
-from smaug import ops
 from smaug import perturb
-from smaug.ops import lang_model
+from smaug import pipeline
 from smaug.cli import accelerator
 from smaug.cli import fmt
 from smaug.cli import processor
@@ -76,6 +74,8 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
         gpu=gpu,
     )
 
+    pipeline_func = pipeline.lift_transform(transform_func, _SWAP_NUM_CMD)
+
     processed = []
 
     pbar = fmt.pbar_from_total(total_records, "Swap a Number for Text")
@@ -85,7 +85,7 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transform_func(batch)
+            records = pipeline_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -167,12 +167,14 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
             gpu=gpu,
         )
 
+        pipeline_func = pipeline.lift_transform(transform_func, _SWAP_NE_CMD)
+
         old_records = dataset["records"]
         new_records = []
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transform_func(batch)
+            records = pipeline_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -226,6 +228,8 @@ def negate(ctx, datasets, batch_size, no_gpu):
         gpu=gpu,
     )
 
+    pipeline_func = pipeline.lift_transform(transform_func, _NEG_CMD)
+
     pbar = fmt.pbar_from_total(total_records, "Negate the Sentence")
 
     processed = []
@@ -236,7 +240,7 @@ def negate(ctx, datasets, batch_size, no_gpu):
 
             for i in range(0, len(old_records), batch_size):
                 batch = old_records[i : i + batch_size]
-                records = transform_func(batch)
+                records = pipeline_func(batch)
                 new_records.extend(records)
                 pbar.update(len(batch))
 
@@ -297,6 +301,8 @@ def delete_punct_span(ctx, datasets, punct, low, high):
         high=high,
     )
 
+    pipeline_func = pipeline.lift_transform(transform_func, _DEL_PUNCT_SPAN_CMD)
+
     processed = []
 
     pbar = fmt.pbar_from_total(
@@ -304,7 +310,7 @@ def delete_punct_span(ctx, datasets, punct, low, high):
     )
     for dataset in datasets:
         old_records = dataset["records"]
-        dataset["records"] = transform_func(old_records)
+        dataset["records"] = pipeline_func(old_records)
 
         pbar.update(len(old_records))
 
@@ -368,6 +374,8 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
         gpu=gpu,
     )
 
+    pipeline_func = pipeline.lift_transform(transform_func, _INS_TEXT_CMD)
+
     processed = []
 
     pbar = fmt.pbar_from_total(total_records, _INS_TEXT_CMD)
@@ -377,7 +385,7 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transform_func(batch)
+            records = pipeline_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 
@@ -433,6 +441,8 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
         gpu=gpu,
     )
 
+    pipeline_func = pipeline.lift_transform(transform_func, _SWAP_POISSON_SPAN_CMD)
+
     processed = []
 
     pbar = fmt.pbar_from_total(total_records, _SWAP_POISSON_SPAN_CMD)
@@ -442,7 +452,7 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
 
         for i in range(0, len(old_records), batch_size):
             batch = old_records[i : i + batch_size]
-            records = transform_func(batch)
+            records = pipeline_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
 

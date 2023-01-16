@@ -25,7 +25,7 @@ def polyjuice_negate(
     text: DataLike[SentenceLike],
     pos_pipeline: stanza.Pipeline,
     model: transformers.AutoModelForCausalLM,
-    tokenizer: transformers.AutoTokenizer,
+    tokenizer: transformers.PreTrainedTokenizerBase,
     rng: np.random.Generator,
     cuda: bool = False,
 ) -> Data[Optional[Sentence]]:
@@ -100,7 +100,7 @@ def _add_negation_prompt(
 
 def _polyjuice_inference(
     prompt: str,
-    tokenizer: transformers.AutoTokenizer,
+    tokenizer: transformers.PreTrainedTokenizerBase,
     model: transformers.AutoModelForCausalLM,
     cuda: bool,
 ) -> str:

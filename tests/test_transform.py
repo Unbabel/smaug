@@ -1,27 +1,24 @@
 import numpy as np
 
 from smaug import core
-from smaug import pipeline
-from smaug import transform
+from smaug import perturb
 
 
-def test_random_delete():
+def test_delete_random_words():
     original = [
-        pipeline.State(original="First source sentence with words"),
-        pipeline.State(original="Second source sentence to be transformed"),
+        "First source sentence with words",
+        "Second source sentence to be transformed",
     ]
-    transformed = transform.random_delete(
-        original, "critical", np.random.default_rng(), p=0.5
+    transformed = perturb.delete_random_words_transform(
+        original, np.random.default_rng(), p=0.5
     )
     assert isinstance(transformed, core.Data)
     assert len(original) == len(transformed)
 
     for o, t in zip(original, transformed):
-        assert o.original == t.original
+        original_splits = o.split()
+        transformed_splits = t.value.split()
 
-        original_splits = t.original.split()
-        critical_splits = t.perturbations["critical"].value.split()
-
-        assert len(critical_splits) <= len(original_splits)
-        for word in critical_splits:
+        assert len(transformed_splits) <= len(original_splits)
+        for word in transformed_splits:
             assert word in original_splits
