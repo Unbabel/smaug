@@ -17,6 +17,7 @@ from smaug.ops.sentence import (
     find,
     startswith,
     endswith,
+    character_insertions,
 )
 from smaug.ops.detection import (
     stanza_detect_named_entities,

@@ -3,6 +3,7 @@ import functools
 import re
 
 import smaug.models.stanza
+from smaug import core
 from smaug import models
 from smaug import ops
 from smaug.ops import nli
@@ -50,7 +51,7 @@ def rm_eq(ctx, datasets, cli_transforms):
         val_func = functools.partial(validation.not_equal, perturbation=transform)
 
         for dataset in processed:
-            not_validated = dataset["records"]
+            not_validated = core.Data(dataset["records"])
             dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
 
@@ -98,7 +99,7 @@ def rm_pattern(ctx, datasets, pattern, cli_transforms):
             pattern=re.compile(pattern),
         )
         for dataset in processed:
-            not_validated = dataset["records"]
+            not_validated = core.Data(dataset["records"])
             dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
 
@@ -160,7 +161,7 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
             not_validated = dataset["records"]
             validated = []
             for i in range(0, len(not_validated), batch_size):
-                batch = not_validated[i : i + batch_size]
+                batch = core.Data(not_validated[i : i + batch_size])
                 validated.extend(val_func(batch))
                 pbar.update(len(batch))
             dataset["records"] = validated
@@ -201,7 +202,7 @@ def keep_eq_num_count(ctx, datasets, cli_transforms):
             validation.equal_numbers_count, perturbation=transform
         )
         for dataset in processed:
-            not_validated = dataset["records"]
+            not_validated = core.Data(dataset["records"])
             dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
     return processed
@@ -267,7 +268,7 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
             not_validated = dataset["records"]
             validated = []
             for i in range(0, len(not_validated), batch_size):
-                batch = not_validated[i : i + batch_size]
+                batch = core.Data(not_validated[i : i + batch_size])
                 validated.extend(val_func(batch))
                 pbar.update(len(batch))
             dataset["records"] = validated
@@ -321,7 +322,7 @@ def keep_geq_edit_dist(ctx, datasets, distance, level, cli_transforms):
             level=level,
         )
         for dataset in processed:
-            not_validated = dataset["records"]
+            not_validated = core.Data(dataset["records"])
             dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
     return processed
@@ -381,7 +382,7 @@ def keep_leq_char_ins(ctx, datasets, chars, max_insertions, cli_transforms):
             max_insertions=max_insertions,
         )
         for dataset in processed:
-            not_validated = dataset["records"]
+            not_validated = core.Data(dataset["records"])
             dataset["records"] = val_func(not_validated)
             pbar.update(len(not_validated))
     return processed

@@ -1,3 +1,5 @@
+import collections
+
 from smaug.core import SpanIndexLike, Modification, ModificationTrace, Sentence
 from smaug.promote import promote_to_span_index
 from smaug.ops.modification import apply_modification
@@ -103,3 +105,20 @@ def startswith(s: Sentence, prefix, start=None, end=None) -> bool:
 
 def endswith(s: Sentence, suffix, start=None, end=None) -> bool:
     return s.value.endswith(suffix, start, end)
+
+
+def character_insertions(original: Sentence, modified: Sentence, chars: str) -> int:
+    """Returns the number of times the given characters were inserted.
+
+    Args:
+        original: Original sentence to perform comparison.
+        modified: Sentence with modifications.
+        chars: Characters to consider.
+
+    Returns:
+        The number of inserted characters.
+    """
+    original_counts = collections.Counter(c for c in original if c in chars)
+    modified_counts = collections.Counter(c for c in modified if c in chars)
+    insertions = modified_counts - original_counts
+    return sum(insertions.values())

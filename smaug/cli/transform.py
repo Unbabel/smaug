@@ -1,6 +1,7 @@
 import click
 import functools
 
+from smaug import core
 from smaug import models
 from smaug import random
 from smaug import perturb
@@ -84,7 +85,7 @@ def swap_num(ctx, datasets, batch_size, no_gpu):
         new_records = []
 
         for i in range(0, len(old_records), batch_size):
-            batch = old_records[i : i + batch_size]
+            batch = core.Data(old_records[i : i + batch_size])
             records = pipeline_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
@@ -173,7 +174,7 @@ def swap_ne(ctx, datasets, batch_size, no_gpu):
         new_records = []
 
         for i in range(0, len(old_records), batch_size):
-            batch = old_records[i : i + batch_size]
+            batch = core.Data(old_records[i : i + batch_size])
             records = pipeline_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
@@ -239,7 +240,7 @@ def negate(ctx, datasets, batch_size, no_gpu):
             new_records = []
 
             for i in range(0, len(old_records), batch_size):
-                batch = old_records[i : i + batch_size]
+                batch = core.Data(old_records[i : i + batch_size])
                 records = pipeline_func(batch)
                 new_records.extend(records)
                 pbar.update(len(batch))
@@ -309,7 +310,7 @@ def delete_punct_span(ctx, datasets, punct, low, high):
         total_records, f"Delete a span between [{punct}]+ matches."
     )
     for dataset in datasets:
-        old_records = dataset["records"]
+        old_records = core.Data(dataset["records"])
         dataset["records"] = pipeline_func(old_records)
 
         pbar.update(len(old_records))
@@ -384,7 +385,7 @@ def insert_text(ctx, datasets, prob, max_masks, batch_size, no_gpu):
         new_records = []
 
         for i in range(0, len(old_records), batch_size):
-            batch = old_records[i : i + batch_size]
+            batch = core.Data(old_records[i : i + batch_size])
             records = pipeline_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))
@@ -451,7 +452,7 @@ def swap_poisson_span(ctx, datasets, batch_size, no_gpu):
         new_records = []
 
         for i in range(0, len(old_records), batch_size):
-            batch = old_records[i : i + batch_size]
+            batch = core.Data(old_records[i : i + batch_size])
             records = pipeline_func(batch)
             new_records.extend(records)
             pbar.update(len(batch))

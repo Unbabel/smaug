@@ -5,10 +5,12 @@ from smaug import perturb
 
 
 def test_delete_random_words():
-    original = [
-        "First source sentence with words",
-        "Second source sentence to be transformed",
-    ]
+    original = core.Data(
+        [
+            "First source sentence with words",
+            "Second source sentence to be transformed",
+        ]
+    )
     transformed = perturb.delete_random_words_transform(
         original, np.random.default_rng(), p=0.5
     )

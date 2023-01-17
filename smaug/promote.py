@@ -1,4 +1,3 @@
-from smaug import frozen
 from smaug.core import DataLike, Data, Sentence, SentenceLike, SpanIndex, SpanIndexLike
 
 from typing import TypeVar
@@ -11,7 +10,6 @@ def promote_to_data(value: DataLike[T]) -> Data[T]:
 
     The following promotion rules are applied:
     * Data objects are returned as is.
-    * Iterable objects are iterated and their elements used for the Data object.
     * All other objects are wrapped in a Data object of length 1.
 
     Args:
@@ -22,8 +20,6 @@ def promote_to_data(value: DataLike[T]) -> Data[T]:
     """
     if isinstance(value, Data):
         return value
-    if isinstance(value, (list, frozen.frozenlist)):
-        return Data(value)
     return Data([value])
 
 

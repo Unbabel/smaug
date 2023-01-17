@@ -10,12 +10,12 @@ from typing import Optional
 
 
 def delete_span_between_punctuation_transform(
-    records: DataLike[SentenceLike],
+    sentences: DataLike[SentenceLike],
     rng: np.random.Generator,
     punctuation: str = ",.!?",
     low: int = 4,
     high: int = 10,
-) -> Data[Sentence]:
+) -> Data[Optional[Sentence]]:
     def transform(s: SentenceLike) -> Optional[Sentence]:
         s = promote_to_sentence(s)
 
@@ -45,5 +45,5 @@ def delete_span_between_punctuation_transform(
         return s
 
     punct_regex = re.compile(f"[{punctuation}]+")
-    records = promote_to_data(records)
-    return Data([transform(s) for s in records])
+    sentences = promote_to_data(sentences)
+    return Data([transform(s) for s in sentences])

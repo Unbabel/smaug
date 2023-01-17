@@ -137,7 +137,7 @@ def _mask_sentence_detections(
         if len(detections) > max_masks:
             detections = rng.choice(detections, max_masks, replace=False)
 
-    return mask_intervals(text, [frozenlist(detections)], mask_func).item()
+    return mask_intervals(text, frozenlist(detections), mask_func).item()
 
 
 def mask_random_replace(

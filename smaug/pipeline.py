@@ -30,7 +30,7 @@ def lift_transform(
 ) -> Callable[[DataLike[State]], Data[State]]:
     def transform(records: DataLike[State]) -> Data[State]:
         records = promote_to_data(records)
-        original = [r.original for r in records]
+        original = Data([r.original for r in records])
         transformed = func(original)
         for orig, t in zip(records, transformed):
             if t is None:

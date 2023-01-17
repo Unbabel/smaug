@@ -17,10 +17,9 @@ from smaug.promote import promote_to_data
             Data([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
             id="Data of lists of ints",
         ),
-        pytest.param([1, 2, 3], Data([1, 2, 3]), id="List of ints"),
         pytest.param(
             [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-            Data([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+            Data([[[1, 2, 3], [4, 5, 6], [7, 8, 9]]]),
             id="List of lists of ints",
         ),
         pytest.param(
