@@ -85,11 +85,7 @@ def swap_named_entity_validation(
             o != p
             and re.search(r"<extra_id_\d{1,2}>", p.value) is None
             and ops.character_insertions(o, p, "<>()[]{}_") == 0
-            and len(ner_func(o).item()) == len(ner_func(p).item())
+            and ops.equal_named_entities_count(o, p, ner_pipeline)
         )
 
-    ner_func = functools.partial(
-        ops.stanza_detect_named_entities,
-        ner_pipeline=ner_pipeline,
-    )
     return functional.lift_boolean_validation(val_func)(originals, perturbations)

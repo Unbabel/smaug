@@ -2,7 +2,7 @@ import dataclasses
 from typing import Any, Callable, Dict, Optional
 
 from smaug import ops
-from smaug.core import Data, DataLike, Sentence, SentenceLike
+from smaug.core import Data, DataLike, Sentence, SentenceLike, Validation
 from smaug.promote import promote_to_data
 
 PerturbationId = str
@@ -24,10 +24,13 @@ class State:
     metadata: Dict[PerturbationId, Any] = dataclasses.field(default_factory=dict)
 
 
+PipelineOp = Callable[[DataLike[State]], Data[State]]
+
+
 def lift_transform(
     func: Callable[[DataLike[SentenceLike]], Data[Optional[Sentence]]],
     perturbation: PerturbationId,
-) -> Callable[[DataLike[State]], Data[State]]:
+) -> PipelineOp:
     def transform(records: DataLike[State]) -> Data[State]:
         records = promote_to_data(records)
         original = Data([r.original for r in records])
@@ -41,3 +44,23 @@ def lift_transform(
         return records
 
     return transform
+
+
+def lift_validation(func: Validation, perturbation: PerturbationId) -> PipelineOp:
+    def del_perturbation(state: State):
+        if perturbation in state.perturbations:
+            del state.perturbations[perturbation]
+        if perturbation in state.metadata:
+            del state.metadata[perturbation]
+
+    def validation(records: DataLike[State]) -> Data[State]:
+        records = promote_to_data(records)
+        originals = Data([r.original for r in records])
+        transformed = Data([r.perturbations.get(perturbation, None) for r in records])
+        validated = func(originals, transformed)
+        for r, v in zip(records, validated):
+            if v is None:
+                del_perturbation(r)
+        return records
+
+    return validation

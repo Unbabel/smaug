@@ -14,9 +14,7 @@ def lift_boolean_validation(
         if p is None:
             return None
         o, p = promote_to_sentence(o), promote_to_sentence(p)
-        if validation_func(o, p):
-            return None
-        return p
+        return p if validation_func(o, p) else None
 
     def validate_all_perturbations(
         originals: DataLike[SentenceLike],

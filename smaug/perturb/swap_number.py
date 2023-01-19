@@ -72,8 +72,7 @@ def swap_number_validation(
             o != p
             and re.search(r"<extra_id_\d{1,2}>", p.value) is None
             and ops.character_insertions(o, p, "<>()[]{}_") == 0
-            and len(ops.regex_detect_numbers(o).item())
-            == len(ops.regex_detect_numbers(p).item())
+            and ops.equal_numbers_count(o, p)
         )
 
     return functional.lift_boolean_validation(val_func)(originals, perturbations)
