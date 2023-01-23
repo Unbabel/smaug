@@ -1,6 +1,6 @@
 import dataclasses
 
-from typing import Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, Iterator, Optional, Tuple, TypeVar, Union
 
 from smaug import frozen
 
@@ -27,8 +27,7 @@ class Data(frozen.frozenlist[T]):
         return f"Data[\n" f"{lines}" f"]"
 
 
-ListLike = Union[List[T], frozen.frozenlist[T]]
-DataLike = Union[Data[T], ListLike[T], T]
+DataLike = Union[Data[T], T]
 
 
 @dataclasses.dataclass(frozen=True, eq=True, order=True)
@@ -176,3 +175,7 @@ class Sentence:
 
 
 SentenceLike = Union[str, Sentence]
+
+Validation = Callable[
+    [DataLike[SentenceLike], DataLike[Optional[SentenceLike]]], Data[Optional[Sentence]]
+]

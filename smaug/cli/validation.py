@@ -2,12 +2,12 @@ import click
 import functools
 import re
 
-import smaug.models.stanza
+from smaug import core
+from smaug import functional
 from smaug import models
 from smaug import ops
-from smaug.ops import nli
-from smaug import validation
 from smaug.cli import accelerator
+from smaug.cli import pipeline
 from smaug.cli import fmt
 from smaug.cli import processor
 
@@ -33,7 +33,7 @@ _KEEP_LEQ_CHAR_INSERT_CMD = "val-keep-leq-char-ins"
 def rm_eq(ctx, datasets, cli_transforms):
     """Validates if the generated records are not equal to the original.
 
-    This operations is a validation. It ensures the generated record is different
+    This operation is a validation. It ensures the generated record is different
     from the original one by performing a string comparison.
     """
     transforms = cli_transforms if cli_transforms else list(ctx.obj.iter_transforms())
@@ -47,11 +47,12 @@ def rm_eq(ctx, datasets, cli_transforms):
 
     for transform in transforms:
         pbar = fmt.pbar_from_total(total_records, f"Remove Equal for {transform}")
-        val_func = functools.partial(validation.not_equal, perturbation=transform)
+        validation_func = functional.lift_boolean_validation(lambda o, p: o != p)
+        pipeline_func = pipeline.lift_validation(validation_func, transform)
 
         for dataset in processed:
-            not_validated = dataset["records"]
-            dataset["records"] = val_func(not_validated)
+            not_validated = core.Data(dataset["records"])
+            dataset["records"] = pipeline_func(not_validated)
             pbar.update(len(not_validated))
 
     return processed
@@ -75,7 +76,7 @@ def rm_pattern(ctx, datasets, pattern, cli_transforms):
     This operations is a validation. It ensures generated records do not have
     the given pattern.
 
-    This validation is particularly usefull with language models that may leave
+    This validation is particularly useful with language models that may leave
     unwanted tokens after generation (such as masks or special tokens) to filter
     these occurrences.
     """
@@ -88,18 +89,18 @@ def rm_pattern(ctx, datasets, pattern, cli_transforms):
         return datasets
 
     processed = [dataset for dataset in datasets]
+    compiled_pattern = re.compile(pattern)
     for transform in transforms:
         pbar = fmt.pbar_from_total(
             total_records, f'Remove Pattern "{pattern}" for {transform}'
         )
-        val_func = functools.partial(
-            validation.no_regex_match,
-            perturbation=transform,
-            pattern=re.compile(pattern),
+        validation_func = functional.lift_boolean_validation(
+            lambda o, p: compiled_pattern.search(p.value) is None,
         )
+        pipeline_func = pipeline.lift_validation(validation_func, transform)
         for dataset in processed:
-            not_validated = dataset["records"]
-            dataset["records"] = val_func(not_validated)
+            not_validated = core.Data(dataset["records"])
+            dataset["records"] = pipeline_func(not_validated)
             pbar.update(len(not_validated))
 
     return processed
@@ -141,27 +142,27 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
 
     model, tokenizer = models.roberta_mnli_load()
     predict_func = functools.partial(
-        nli.roberta_mnli_predict, model=model, tokenizer=tokenizer, cuda=gpu
+        ops.roberta_mnli_predict, model=model, tokenizer=tokenizer, cuda=gpu
     )
-    contradiction_id = nli.roberta_mnli_contradiction_id(model)
+    contradiction_id = ops.roberta_mnli_contradiction_id(model)
 
     processed = [dataset for dataset in datasets]
     for transform in transforms:
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Contradictions for {transform}"
         )
-        val_func = functools.partial(
-            validation.is_contradiction,
-            perturbation=transform,
-            predict_func=predict_func,
-            contradiction_id=contradiction_id,
+        validation_func = functional.lift_boolean_validation(
+            lambda o, p: predict_func(f"{o} </s></s> {p}").argmax().item()
+            == contradiction_id,
         )
+        pipeline_func = pipeline.lift_validation(validation_func, transform)
+
         for dataset in processed:
             not_validated = dataset["records"]
             validated = []
             for i in range(0, len(not_validated), batch_size):
-                batch = not_validated[i : i + batch_size]
-                validated.extend(val_func(batch))
+                batch = core.Data(not_validated[i : i + batch_size])
+                validated.extend(pipeline_func(batch))
                 pbar.update(len(batch))
             dataset["records"] = validated
     return processed
@@ -197,12 +198,11 @@ def keep_eq_num_count(ctx, datasets, cli_transforms):
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Equal Numbers Count for {transform}"
         )
-        val_func = functools.partial(
-            validation.equal_numbers_count, perturbation=transform
-        )
+        validation_func = functional.lift_boolean_validation(ops.equal_numbers_count)
+        pipeline_func = pipeline.lift_validation(validation_func, transform)
         for dataset in processed:
-            not_validated = dataset["records"]
-            dataset["records"] = val_func(not_validated)
+            not_validated = core.Data(dataset["records"])
+            dataset["records"] = pipeline_func(not_validated)
             pbar.update(len(not_validated))
     return processed
 
@@ -237,7 +237,7 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
     total_records = sum(
         len(dataset["records"])
         for dataset in datasets
-        if smaug.models.stanza.stanza_ner_lang_available(dataset["lang"])
+        if models.stanza_ner_lang_available(dataset["lang"])
     )
     if total_records == 0:
         click.echo(fmt.no_records_message("Keep Equal Named Entities Count"))
@@ -252,23 +252,20 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
         )
         for dataset in processed:
             lang = dataset["lang"]
-            if not smaug.models.stanza.stanza_ner_lang_available(lang):
+            if not models.stanza_ner_lang_available(lang):
                 continue
             ner_pipeline = models.stanza_ner_load(lang, gpu)
-            ner_func = functools.partial(
-                ops.stanza_detect_named_entities,
+            validation_func = functools.partial(
+                ops.equal_named_entities_count,
                 ner_pipeline=ner_pipeline,
             )
-            val_func = functools.partial(
-                validation.equal_named_entites_count,
-                perturbation=transform,
-                ner_func=ner_func,
-            )
+            validation_func = functional.lift_boolean_validation(validation_func)
+            pipeline_func = pipeline.lift_validation(validation_func, transform)
             not_validated = dataset["records"]
             validated = []
             for i in range(0, len(not_validated), batch_size):
-                batch = not_validated[i : i + batch_size]
-                validated.extend(val_func(batch))
+                batch = core.Data(not_validated[i : i + batch_size])
+                validated.extend(pipeline_func(batch))
                 pbar.update(len(batch))
             dataset["records"] = validated
     return processed
@@ -297,7 +294,7 @@ def keep_eq_ne_count(ctx, datasets, cli_transforms, batch_size, no_gpu):
 @processor.make
 @click.pass_context
 def keep_geq_edit_dist(ctx, datasets, distance, level, cli_transforms):
-    """Validates if the pertubrations have a minimum edit distance higher than a threshold.
+    """Validates if the perturbations have a minimum edit distance higher than a threshold.
 
     This operation is a validation. It computes the minimum edit distance between the original
     and perturbed sentences.
@@ -314,15 +311,14 @@ def keep_geq_edit_dist(ctx, datasets, distance, level, cli_transforms):
         pbar = fmt.pbar_from_total(
             total_records, f"Keep Edit Distance above {distance} for {transform}"
         )
-        val_func = functools.partial(
-            validation.geq_edit_distance,
-            perturbation=transform,
-            min_dist=distance,
-            level=level,
+
+        validation_func = functional.lift_boolean_validation(
+            lambda s1, s2: ops.edit_distance(s1, s2, level) >= distance
         )
+        pipeline_func = pipeline.lift_validation(validation_func, transform)
         for dataset in processed:
-            not_validated = dataset["records"]
-            dataset["records"] = val_func(not_validated)
+            not_validated = core.Data(dataset["records"])
+            dataset["records"] = pipeline_func(not_validated)
             pbar.update(len(not_validated))
     return processed
 
@@ -374,14 +370,12 @@ def keep_leq_char_ins(ctx, datasets, chars, max_insertions, cli_transforms):
             total_records,
             f"Keep {chars} insertions below {max_insertions} for {transform}",
         )
-        val_func = functools.partial(
-            validation.leq_char_insertions,
-            perturbation=transform,
-            chars=chars,
-            max_insertions=max_insertions,
+        validation_func = functional.lift_boolean_validation(
+            lambda o, p: ops.character_insertions(o, p, chars) <= max_insertions
         )
+        pipeline_func = pipeline.lift_validation(validation_func, transform)
         for dataset in processed:
-            not_validated = dataset["records"]
-            dataset["records"] = val_func(not_validated)
+            not_validated = core.Data(dataset["records"])
+            dataset["records"] = pipeline_func(not_validated)
             pbar.update(len(not_validated))
     return processed
