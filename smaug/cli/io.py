@@ -4,10 +4,10 @@ import pandas as pd
 import typing
 
 from smaug import frozen
-from smaug import pipeline
 from smaug import random
 from smaug.core import Sentence, SpanIndex
 from smaug.cli import fmt
+from smaug.cli import pipeline
 from smaug.cli import param
 from smaug.cli import processor
 

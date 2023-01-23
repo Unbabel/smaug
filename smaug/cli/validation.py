@@ -6,8 +6,8 @@ from smaug import core
 from smaug import functional
 from smaug import models
 from smaug import ops
-from smaug import pipeline
 from smaug.cli import accelerator
+from smaug.cli import pipeline
 from smaug.cli import fmt
 from smaug.cli import processor
 

@@ -5,8 +5,8 @@ from smaug import core
 from smaug import models
 from smaug import random
 from smaug import perturb
-from smaug import pipeline
 from smaug.cli import accelerator
+from smaug.cli import pipeline
 from smaug.cli import fmt
 from smaug.cli import processor
 from smaug.cli import validation
