@@ -6,20 +6,19 @@ from smaug.promote import promote_to_data, promote_to_sentence
 
 
 def delete_random_words_transform(
-    records: DataLike[SentenceLike],
+    sentences: DataLike[SentenceLike],
     rng: np.random.Generator,
     p: float = 0.2,
 ) -> Data[Sentence]:
     """Deletes random words in the sentences.
 
     Args:
-        records: Records to transform.
-        perturbation: Name of the perturbation to consider.
+        sentences: Sentences to transform.
         rng: Numpy generator to use.
         p: Probability of deleting a word.
 
     Returns:
-        Transformed records.
+        Transformed sentences.
     """
 
     def next_word_start(s: Sentence, start: int):
@@ -44,5 +43,5 @@ def delete_random_words_transform(
 
         return s
 
-    records = promote_to_data(records)
-    return Data([transform(s) for s in records])
+    sentences = promote_to_data(sentences)
+    return Data([transform(s) for s in sentences])

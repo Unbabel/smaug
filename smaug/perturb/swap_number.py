@@ -33,7 +33,8 @@ def swap_number(
         gpu: Whether to use gpu.
 
     Returns:
-        The perturbed records.
+        The perturbed records. Returns None for sentences for which
+        the validations failed.
     """
 
     transformed = swap_number_transform(sentences, mt5_model, mt5_tokenizer, rng, gpu)
@@ -47,6 +48,18 @@ def swap_number_transform(
     rng: np.random.Generator,
     gpu: bool = False,
 ) -> Data[Sentence]:
+    """Performs the transform phase for the swap_number perturbation.
+
+    Args:
+        sentences: Records to perturb.
+        mt5_model: mt5 model to use.
+        mt5_tokenizer: mt5 tokenizer to use.
+        rng: Numpy random generator to use.
+        gpu: Whether to use gpu.
+
+    Returns:
+        Transformed sentences.
+    """
     masked = ops.mask_detections(
         sentences,
         detect_func=ops.regex_detect_numbers,
@@ -65,8 +78,28 @@ def swap_number_transform(
 
 def swap_number_validation(
     originals: DataLike[SentenceLike],
-    perturbations: DataLike[Optional[SentenceLike]],
+    transformed: DataLike[Optional[SentenceLike]],
 ) -> Data[Optional[Sentence]]:
+    """Performs the validation phase for the swap_number perturbation.
+
+    It validates that the generated sentences are different from
+    the original, and ensures a basic quality level by removing
+    sentences that match the mT5 masking pattern (<extra_id_\\d{1,2}>)
+    and sentences with character insertions for <>()[]{}_, as they are
+    likely model hallucinations.
+
+    It also validates that the original and transformed sentences have
+    the same count of numbers to ensure the mT5 model generated a number.
+
+    Args:
+        originals: Original sentences.
+        transformed: Transformed sentences.
+
+    Returns:
+        Validated sentences. Returns None for sentences for which
+        the validations failed.
+    """
+
     def val_func(o: Sentence, p: Sentence) -> bool:
         return (
             o != p
@@ -75,4 +108,4 @@ def swap_number_validation(
             and ops.equal_numbers_count(o, p)
         )
 
-    return functional.lift_boolean_validation(val_func)(originals, perturbations)
+    return functional.lift_boolean_validation(val_func)(originals, transformed)

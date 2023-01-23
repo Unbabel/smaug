@@ -16,6 +16,16 @@ def delete_span_between_punctuation_transform(
     low: int = 4,
     high: int = 10,
 ) -> Data[Optional[Sentence]]:
+    """Deletes a text span between two punctuation symbols.
+
+    Args:
+        sentences: Sentences to transform.
+        rng: Numpy random number generator to use.
+        punctuation: Punctuation symbols to consider.
+        low: Minimum number of words for considered span.
+        high: Maximum number of words for considered spans.
+    """
+
     def transform(s: SentenceLike) -> Optional[Sentence]:
         s = promote_to_sentence(s)
 
