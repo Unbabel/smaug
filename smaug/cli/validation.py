@@ -152,8 +152,7 @@ def keep_contradiction(ctx, datasets, cli_transforms, batch_size, no_gpu):
             total_records, f"Keep Contradictions for {transform}"
         )
         validation_func = functional.lift_boolean_validation(
-            lambda o, p: predict_func(f"{o} </s></s> {p}").argmax().item()
-            == contradiction_id,
+            lambda o, p: predict_func(o, p).argmax().item() == contradiction_id,
         )
         pipeline_func = pipeline.lift_validation(validation_func, transform)
 
