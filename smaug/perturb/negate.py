@@ -114,8 +114,7 @@ def negate_validation(
         return (
             o != p
             and re.search("EMPTY", p.value) is None
-            and roberta_predict_func(f"{o} </s></s> {p}").argmax().item()
-            == roberta_contradiction_id
+            and roberta_predict_func(o, p).argmax().item() == roberta_contradiction_id
         )
 
     roberta_predict_func = functools.partial(
