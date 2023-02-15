@@ -1,5 +1,4 @@
 import numpy as np
-import re
 
 from smaug import ops
 from smaug.core import Data, DataLike, Sentence, SentenceLike
@@ -12,7 +11,6 @@ from typing import Optional
 def delete_span_between_punctuation_transform(
     sentences: DataLike[SentenceLike],
     rng: np.random.Generator,
-    punctuation: str = ",.!?",
     low: int = 4,
     high: int = 10,
 ) -> Data[Optional[Sentence]]:
@@ -21,39 +19,33 @@ def delete_span_between_punctuation_transform(
     Args:
         sentences: Sentences to transform.
         rng: Numpy random number generator to use.
-        punctuation: Punctuation symbols to consider.
         low: Minimum number of words for considered span.
         high: Maximum number of words for considered spans.
     """
 
-    def transform(s: SentenceLike) -> Optional[Sentence]:
-        s = promote_to_sentence(s)
-
-        matches = punct_regex.finditer(s.value)
-        spans_delims_idxs = [0] + [m.end() for m in matches] + [len(s)]
-        # Transform indexes in iterable with (idx1,idx2), (idx2,idx3), ...
-        pairwise = zip(spans_delims_idxs, spans_delims_idxs[1:])
-
+    def delete_span(s: Sentence, possible_spans_idxs) -> Optional[Sentence]:
         possible_spans_idxs = [
-            (start, end)
-            for start, end in pairwise
-            if start > 0 and low < len(s.value[start:end].split()) < high
+            span_idx
+            for span_idx in possible_spans_idxs
+            if span_idx.start > 0 and low < len(s.value[span_idx.start:span_idx.end].split()) < high
         ]
         if len(possible_spans_idxs) == 0:
             return None
 
         idx_to_drop = rng.choice(possible_spans_idxs)
 
-        s = ops.rstrip(ops.delete(s, idx_to_drop))
+        return ops.delete(s, idx_to_drop)
 
+    def clean_sentence(s: Sentence) -> Sentence:
+        s = ops.rstrip(s)
         # To increase credibility of generated sentence,
         # replace last "," with "." .
         if not ops.endswith(s, (".", "?", "!")):
-            s = ops.delete(s, (len(s) - 1, len(s)))
-            s = ops.append(s, ".")
-
+            s = ops.replace(s, ".", (len(s) - 1, len(s)))
         return s
 
-    punct_regex = re.compile(f"[{punctuation}]+")
     sentences = promote_to_data(sentences)
-    return Data([transform(s) for s in sentences])
+    promoted = Data([promote_to_sentence(s) for s in sentences])
+    possible_spans_idxs = ops.regex_detect_spans_between_punctuation(promoted)
+    deleted = [delete_span(s, p) for s, p in zip(promoted, possible_spans_idxs)]
+    return Data([clean_sentence(s) if s is not None else None for s in deleted])

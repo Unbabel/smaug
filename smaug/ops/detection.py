@@ -1,7 +1,7 @@
 import re
 import stanza
 
-from smaug.core import Data, DataLike, Sentence, SentenceLike
+from smaug.core import Data, DataLike, Sentence, SentenceLike, SpanIndex
 from smaug.frozen import frozenlist
 from smaug.promote import promote_to_data, promote_to_sentence
 
@@ -78,4 +78,43 @@ def regex_detect_matches(
         matches = regex.finditer(s.value)
         return frozenlist([m.span() for m in matches])
 
+    return Data([process_sentence(s) for s in sentences])
+
+_DEFAULT_PUNCTUATION_REGEX = re.compile(r"[!?.,]+")
+
+def regex_detect_spans_between_punctuation(
+    text: DataLike[SentenceLike],
+) -> Data[frozenlist[SpanIndex]]:
+    """Detects text spans between punctuation marks.
+
+    Args:
+        text: Text to process.
+
+    Returns:
+        Spans between detected punctuation marks.
+    """
+    return regex_detect_spans_between_matches(text, _DEFAULT_PUNCTUATION_REGEX)
+
+def regex_detect_spans_between_matches(
+    text: DataLike[SentenceLike], regex: re.Pattern,
+) -> Data[frozenlist[SpanIndex]]:
+    """Detects text spans between matches of a given regex.
+
+    Args:
+        text: Text to process.
+        regex: Regular Expression to search.
+
+    Returns:
+        Spans between detected matches.
+    """
+    text = promote_to_data(text)
+    sentences = map(promote_to_sentence, text)
+
+    def process_sentence(s: Sentence) -> frozenlist[SpanIndex]:
+        matches = regex.finditer(s.value)
+        spans_delims_idxs = [0] + [m.end() for m in matches] + [len(s)]
+        # Transform indexes in iterable with (idx1,idx2), (idx2,idx3), ...
+        pairwise = zip(spans_delims_idxs, spans_delims_idxs[1:])
+        return frozenlist(SpanIndex(s, e) for s, e in pairwise)
+    
     return Data([process_sentence(s) for s in sentences])
